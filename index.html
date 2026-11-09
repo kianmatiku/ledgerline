@@ -1,0 +1,1840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ledgerline · Business finance tracker</title>
+  <meta name="description" content="Track income, expenses, invoices, budgets, cash flow and estimated taxes for a small business. Data stays in your browser." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Crect width='28' height='28' rx='7' fill='%230c0c0b'/%3E%3Cpath d='M7 18.5l4.5-5 3.5 3 6-7' fill='none' stroke='%2385eda5' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'system-ui', 'Segoe UI', 'Roboto', 'sans-serif'],
+            serif: ['Newsreader', 'Apple Garamond', 'Baskerville', 'Times New Roman', 'serif'],
+            mono: ['Roboto Mono', 'ui-monospace', 'monospace'],
+          },
+          colors: {
+            stone: {
+              45: '#fdfcf9', 100: '#f9f5ef', 200: '#f1ece5', 300: '#e6e1d9', 400: '#d4cfc6', 500: '#c2bcb2',
+              550: '#aba69d', 600: '#959089', 650: '#7c7771', 700: '#625d58', 800: '#514e4b', 900: '#363533',
+              1000: '#1a1918', 1100: '#0c0c0b',
+            },
+            mint: { 500: '#85eda5' },
+            coral: { 500: '#f85156' },
+            violet: { 400: '#b29bff' },
+          },
+          maxWidth: { container: '1400px' },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --bg: #0c0c0b; --panel: #0f0f0e; --line: #363533; --line-soft: #252422;
+      --fg: #f9f5ef; --fg2: #959089; --fg3: #625d58;
+      --mint: #85eda5; --red: #f85156; --violet: #b29bff;
+      --c-in: #2fa866; --c-out: #8a6ce8; --c-3: #c4832a;
+    }
+    html, body { background: var(--bg); color: var(--fg); }
+    body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; letter-spacing: -0.012em; }
+    [hidden] { display: none !important; }
+    .font-mono { letter-spacing: 0.02em; }
+    .serif { font-family: 'Newsreader', Baskerville, 'Times New Roman', serif; font-weight: 360; letter-spacing: -0.035em; }
+    .serif-h2 { letter-spacing: -0.045em; }
+    .label { font-family: 'Roboto Mono', monospace; font-size: 11px; line-height: 16px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--fg2); }
+    .line-t { border-top: 1px solid var(--line); } .line-b { border-bottom: 1px solid var(--line); }
+    .line-l { border-left: 1px solid var(--line); } .line-r { border-right: 1px solid var(--line); }
+    .dash-b { border-bottom: 1px dashed var(--line); } .dash-r { border-right: 1px dashed var(--line); }
+    .panel { background: rgba(12,12,11,.9); border: 1px solid var(--line); }
+    .grid-lines { display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+    .grid-lines > * { background: var(--bg); }
+    .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--fg); display: inline-block; flex: none; }
+
+    /* Buttons */
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px; padding: 0 17px; border-radius: 999px; font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; cursor: pointer; transition: background-color .2s, border-color .2s, color .2s; user-select: none; }
+    .btn-primary { background: #e6e1d9; color: #0c0c0b; } .btn-primary:hover { background: #f9f5ef; }
+    .btn-ghost { border: 1px solid var(--line); color: var(--fg); } .btn-ghost:hover { border-color: #625d58; background: #151514; }
+    .btn-danger { border: 1px solid #5c2627; color: #ff8a8d; } .btn-danger:hover { background: #1f1010; border-color: #8a3436; }
+    .btn-danger-solid { background: #f85156; color: #0c0c0b; } .btn-danger-solid:hover { background: #ff6a6e; }
+    .btn-sm { height: 30px; padding: 0 12px; font-size: 11px; }
+    .btn .arr { transition: transform .25s; } .btn:hover .arr { transform: translateX(3px); }
+    .icon-btn { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; color: var(--fg2); transition: background-color .2s, color .2s; }
+    .icon-btn:hover { background: #1a1918; color: var(--fg); }
+    .icon-btn.danger:hover { color: var(--red); }
+    :focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
+
+    /* Segmented control */
+    .seg { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 999px; gap: 2px; flex-wrap: wrap; }
+    .seg button, .seg label { height: 30px; padding: 0 13px; border-radius: 999px; font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--fg2); display: inline-flex; align-items: center; cursor: pointer; transition: background-color .2s, color .2s; white-space: nowrap; }
+    .seg button:hover, .seg label:hover { color: var(--fg); }
+    .seg button.on, .seg label:has(input:checked) { background: #e6e1d9; color: #0c0c0b; }
+    .seg input { position: absolute; opacity: 0; pointer-events: none; }
+
+    /* Form fields */
+    .field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+    .input { height: 40px; width: 100%; background: #131312; border: 1px solid var(--line); border-radius: 8px; padding: 0 12px; color: var(--fg); font-size: 14px; outline: none; transition: border-color .2s; min-width: 0; }
+    .input::placeholder { color: #625d58; }
+    .input:focus { border-color: #959089; }
+    textarea.input { height: auto; padding: 10px 12px; line-height: 1.5; resize: vertical; }
+    select.input { appearance: none; -webkit-appearance: none; padding-right: 34px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%23959089' stroke-width='1.4'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+    input[type=date].input::-webkit-calendar-picker-indicator { filter: invert(.7); cursor: pointer; }
+    input[type=range] { accent-color: #85eda5; width: 100%; }
+
+    /* Tables */
+    .tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .tbl th { font-family: 'Roboto Mono', monospace; font-size: 11px; font-weight: 400; letter-spacing: 0.07em; text-transform: uppercase; color: var(--fg2); text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    .tbl td { padding: 12px; border-bottom: 1px dashed var(--line-soft); vertical-align: middle; }
+    .tbl tbody tr { transition: background-color .15s; }
+    .tbl tbody tr:hover td { background: #121211; }
+    .tbl tfoot td { border-bottom: 0; border-top: 1px solid var(--line); padding-top: 14px; }
+    .tbl th.text-right { text-align: right; }
+    #view .grid > *, #view .grid-lines > * { min-width: 0; }
+    .cells { display: grid; gap: 1px; } .cells > * { outline: 1px solid var(--line); background: var(--bg); }
+    .th-sort { cursor: pointer; } .th-sort:hover { color: var(--fg); }
+    .chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line); font-size: 12px; color: #c2bcb2; white-space: nowrap; }
+    .chip button { color: var(--fg3); font-size: 14px; line-height: 1; } .chip button:hover { color: var(--red); }
+    .status { display: inline-flex; align-items: center; gap: 7px; font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+    .status i { width: 7px; height: 7px; border-radius: 999px; }
+    .st-paid i { background: var(--mint); } .st-sent i { background: var(--violet); } .st-overdue { color: #ff8a8d; } .st-overdue i { background: var(--red); } .st-draft { color: var(--fg2); } .st-draft i { background: transparent; border: 1px solid var(--fg2); }
+    .delta { font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .02em; }
+    .delta.good { color: var(--mint); } .delta.bad { color: #ff8a8d; }
+
+    /* Progress & category bars */
+    .track { height: 6px; background: #1d1c1a; border-radius: 999px; overflow: hidden; }
+    .track > i { display: block; height: 100%; border-radius: 999px; background: var(--c-in); transform-origin: left; }
+    .anim .track > i { animation: growx 1s cubic-bezier(.2,.7,.2,1) both; }
+    .track.over > i { background: var(--red); } .track.risk > i { background: var(--c-3); } .track.cat > i { background: #b29bff; }
+
+    /* Sidebar */
+    .nav-link { display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px; border-radius: 8px; color: var(--fg2); font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; transition: background-color .2s, color .2s; position: relative; }
+    .nav-link:hover { color: var(--fg); background: #141413; }
+    .nav-link.active { color: var(--fg); background: #1a1918; }
+    .nav-link.active::after { content: ''; position: absolute; right: 12px; width: 6px; height: 6px; border-radius: 999px; background: var(--mint); }
+    .nav-link svg { flex: none; }
+    #sidebar { transition: transform .3s cubic-bezier(.2,.7,.2,1); }
+    body.menu-open #sidebar { transform: translateX(0); }
+
+    /* Animated background */
+    .bg-layer { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+    .bg-dots { position: absolute; inset: -64px; background-image: radial-gradient(circle at 1px 1px, #252423 1px, transparent 1.25px); background-size: 16px 16px; animation: drift 36s linear infinite; will-change: transform; }
+    .bg-fade { position: absolute; inset: 0; background: radial-gradient(ellipse 90% 70% at 50% 0%, rgba(12,12,11,.25) 0%, rgba(12,12,11,.92) 62%, #0c0c0b 100%); }
+    .glow { position: absolute; width: 760px; height: 760px; border-radius: 50%; will-change: transform; }
+    .g1 { top: -300px; left: -180px; background: radial-gradient(circle, rgba(133,237,165,.085) 0%, rgba(133,237,165,0) 62%); animation: float1 28s ease-in-out infinite alternate; }
+    .g2 { top: 30%; right: -320px; background: radial-gradient(circle, rgba(178,155,255,.07) 0%, rgba(178,155,255,0) 62%); animation: float2 34s ease-in-out infinite alternate; }
+    @keyframes drift { to { transform: translate3d(48px, 48px, 0); } }
+    @keyframes float1 { to { transform: translate3d(220px, 160px, 0) scale(1.1); } }
+    @keyframes float2 { to { transform: translate3d(-240px, 120px, 0) scale(.92); } }
+    #site, #app { position: relative; z-index: 1; }
+
+    /* Reveal on scroll */
+    .js .reveal { opacity: 0; transform: translate3d(0, 18px, 0); transition: opacity .7s ease, transform .8s cubic-bezier(.2,.7,.2,1); }
+    .js .reveal.in { opacity: 1; transform: none; }
+
+    /* ASCII currency band */
+    #ascii { font-size: 12px; line-height: 14px; white-space: pre; letter-spacing: 0.1em; }
+    #ascii .c { color: #827e77; } #ascii .s { color: #262523; } #ascii .m { color: #85eda5; }
+    .marquee { display: flex; width: max-content; animation: marquee 90s linear infinite; will-change: transform; }
+    @keyframes marquee { to { transform: translate3d(-50%, 0, 0); } }
+    .ticker { display: flex; width: max-content; animation: marquee 50s linear infinite; will-change: transform; }
+
+    /* Charts */
+    .chart svg { display: block; overflow: visible; }
+    .chart .gl { stroke: #232220; stroke-width: 1; } .chart .gl.base { stroke: #3a3936; }
+    .chart .ax { fill: #7c7771; font-family: 'Roboto Mono', monospace; font-size: 10.5px; letter-spacing: .03em; pointer-events: none; }
+    .chart .bm, .chart text { pointer-events: none; }
+    .chart .col-bg { fill: transparent; transition: fill .15s; } .chart .col-bg.on { fill: rgba(249,245,239,.045); }
+    .chart .bar { transform-box: fill-box; transform-origin: 50% 100%; animation: grow .8s cubic-bezier(.2,.7,.2,1) both; }
+    .chart .draw { animation: draw 1.6s cubic-bezier(.4,.1,.2,1) both; }
+    .chart .fade { animation: fadein 1.2s ease .3s both; }
+    @keyframes grow { from { transform: scaleY(0); } }
+    @keyframes growx { from { transform: scaleX(0); } }
+    @keyframes draw { from { stroke-dashoffset: var(--len); } to { stroke-dashoffset: 0; } }
+    @keyframes fadein { from { opacity: 0; } }
+    .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: #c2bcb2; }
+    .legend span { display: inline-flex; align-items: center; gap: 8px; }
+    .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+    .legend i.ln { height: 2px; width: 14px; border-radius: 2px; }
+    #tip { position: fixed; left: 0; top: 0; z-index: 90; pointer-events: none; background: #1a1918; border: 1px solid #3a3936; border-radius: 8px; padding: 9px 11px; font-size: 12.5px; color: var(--fg); min-width: 140px; box-shadow: 0 12px 32px rgba(0,0,0,.5); }
+    .tip-h { font-family: 'Roboto Mono', monospace; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--fg2); margin-bottom: 6px; }
+    .tip-r { display: flex; align-items: center; gap: 8px; line-height: 20px; } .tip-r i { width: 8px; height: 8px; border-radius: 2px; } .tip-r b { margin-left: auto; padding-left: 14px; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+    /* Live pulse */
+    .pulse { position: relative; } .pulse::after { content: ''; position: absolute; inset: -4px; border-radius: 999px; border: 1px solid var(--mint); animation: ping 2.4s cubic-bezier(0,0,.2,1) infinite; }
+    @keyframes ping { 0% { transform: scale(.6); opacity: .9; } 80%, 100% { transform: scale(1.8); opacity: 0; } }
+
+    /* Feature cards */
+    .fcard { transition: background-color .25s; }
+    .fcard:hover { background: #121211; }
+    .fcard .arr { transition: transform .3s; } .fcard:hover .arr { transform: translateX(4px); }
+    .fcard .fnum { transition: color .3s; } .fcard:hover .fnum { color: var(--mint); }
+
+    /* Dialog */
+    dialog#modal { background: #0f0f0e; color: var(--fg); border: 1px solid var(--line); border-radius: 14px; padding: 0; width: min(600px, calc(100vw - 20px)); max-height: calc(100dvh - 24px); box-shadow: 0 30px 80px rgba(0,0,0,.6); }
+    dialog#modal.wide { width: min(860px, calc(100vw - 20px)); }
+    dialog#modal::backdrop { background: rgba(6,6,5,.72); }
+    dialog#modal[open] { animation: pop .25s cubic-bezier(.2,.7,.2,1); }
+    @keyframes pop { from { opacity: 0; transform: translateY(10px) scale(.985); } }
+
+    /* Toasts */
+    #toasts { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; width: max-content; max-width: calc(100vw - 24px); }
+    .toast { background: #e6e1d9; color: #0c0c0b; padding: 10px 16px; border-radius: 999px; font-size: 13.5px; box-shadow: 0 10px 30px rgba(0,0,0,.45); animation: pop .25s ease both; transition: opacity .3s, transform .3s; text-align: center; }
+    .toast.err { background: #f85156; } .toast.out { opacity: 0; transform: translateY(6px); }
+
+    /* Invoice paper */
+    .paper { background: #fdfcf9; color: #1a1918; border-radius: 10px; padding: 36px; font-size: 14px; letter-spacing: -0.01em; }
+    .paper .muted { color: #7c7771; } .paper table { width: 100%; border-collapse: collapse; }
+    .paper th { text-align: left; font-family: 'Roboto Mono', monospace; font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: #7c7771; font-weight: 400; padding: 8px 0; border-bottom: 1px solid #d4cfc6; }
+    .paper td { padding: 10px 0; border-bottom: 1px dashed #e6e1d9; }
+    #printArea { display: none; }
+    @media print {
+      @page { margin: 14mm; }
+      html, body { background: #fff !important; }
+      body > *:not(#printArea) { display: none !important; }
+      #printArea { display: block !important; color: #1a1918; }
+      #printArea .paper { padding: 0; border-radius: 0; background: #fff; }
+      .print-report { color: #1a1918; font-size: 13px; }
+      .print-report .tbl th, .print-report .tbl td { color: #1a1918; border-color: #ccc; }
+      .print-report .label { color: #555; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+      .js .reveal { opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+<body class="font-sans">
+
+  <!-- Animated background (GPU transforms only) -->
+  <div class="bg-layer" aria-hidden="true">
+    <div class="bg-dots"></div>
+    <div class="glow g1"></div>
+    <div class="glow g2"></div>
+    <div class="bg-fade"></div>
+  </div>
+
+  <!-- ===================== MARKETING SITE ===================== -->
+  <div id="site" hidden>
+    <header class="h-16 relative z-10">
+      <div class="max-w-container mx-auto h-full px-4 lg:px-10 flex items-center justify-between relative">
+        <a href="#home" class="flex items-center gap-2.5 text-stone-100" aria-label="Ledgerline home">
+          <svg class="logo-mark" width="30" height="30" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="1.5" width="25" height="25" rx="7"/><path d="M7 18.5l4.5-5 3.5 3 6-7" stroke="#85eda5" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 22h14" stroke-opacity=".4"/></svg>
+          <span class="serif text-[26px] leading-none tracking-[-0.03em] relative top-[1px]">Ledgerline</span>
+        </a>
+        <nav class="hidden lg:flex absolute left-1/2 -translate-x-1/2 gap-8 font-mono text-[13px] tracking-[0.02em] text-stone-100">
+          <button type="button" data-action="scroll-to" data-target="features" class="hover:text-mint-500 transition-colors">TOOLS</button>
+          <button type="button" data-action="scroll-to" data-target="preview" class="hover:text-mint-500 transition-colors">PREVIEW</button>
+          <button type="button" data-action="scroll-to" data-target="how" class="hover:text-mint-500 transition-colors">HOW IT WORKS</button>
+          <button type="button" data-action="scroll-to" data-target="privacy" class="hover:text-mint-500 transition-colors">PRIVACY</button>
+        </nav>
+        <div class="flex items-center gap-6 font-mono text-[13px]">
+          <a href="#settings" class="hidden sm:inline text-stone-100 hover:text-mint-500 transition-colors">SETTINGS</a>
+          <a href="#dashboard" class="btn btn-primary !h-[34px] !text-[12px]">OPEN APP</a>
+        </div>
+      </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="relative lg:h-[600px] overflow-hidden">
+      <svg id="heroLine" class="absolute right-0 top-10 w-[70%] h-[78%] hidden md:block" viewBox="0 0 800 400" preserveAspectRatio="none" fill="none" aria-hidden="true"></svg>
+      <div class="max-w-container mx-auto h-full px-4 lg:px-10 pt-20 pb-12 lg:pt-0 lg:pb-10 flex flex-col justify-end relative">
+        <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-10">
+          <div class="reveal">
+            <div class="label mb-6 flex items-center gap-3"><span class="dot pulse !bg-mint-500"></span>Business finance tracker</div>
+            <h1 class="serif text-[50px] leading-[50px] sm:text-[64px] sm:leading-[64px] lg:text-[76px] lg:leading-[74px] text-stone-100">The ledger your<br />business runs on</h1>
+            <p class="mt-5 max-w-[640px] text-[18px] leading-[27px] lg:text-[20px] lg:leading-[29px] text-stone-100">Track income, expenses, invoices, budgets and taxes in one place. <span class="text-stone-600">See where the money went, what's coming in, and what you'll owe, every morning.</span></p>
+            <div class="mt-7 flex flex-wrap gap-3">
+              <a href="#dashboard" class="btn btn-primary !h-[42px] !px-5">OPEN DASHBOARD <svg class="arr" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1.5 7h11M8 2.5 12.5 7 8 11.5"/></svg></a>
+              <button type="button" data-action="scroll-to" data-target="features" class="btn btn-ghost !h-[42px] !px-5">SEE THE TOOLS</button>
+            </div>
+          </div>
+          <button type="button" data-action="scroll-to" data-target="privacy" class="reveal flex items-center gap-3 font-mono text-[13px] tracking-[0.05em] text-stone-100 lg:mb-2 text-left">
+            <span class="dot"></span>YOUR DATA STAYS ON THIS DEVICE
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="#959089" stroke-width="1.3"><path d="M1.5 7h11M8 2.5 12.5 7 8 11.5"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ASCII currency band (scrolls slowly) -->
+    <section class="line-t h-[198px] overflow-hidden" aria-hidden="true">
+      <div id="ascii" class="font-mono pt-[2px] select-none"></div>
+    </section>
+
+    <!-- Live stat strip -->
+    <section class="line-t line-b">
+      <div id="statStrip" class="max-w-container mx-auto lg:line-l lg:line-r grid grid-cols-2 lg:grid-cols-6"></div>
+    </section>
+
+    <!-- Tools -->
+    <section id="features" class="scroll-mt-4">
+      <div class="max-w-container mx-auto px-4 lg:px-10 pt-24 lg:pt-32 pb-12 lg:pb-16">
+        <div class="reveal flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+          <div>
+            <div class="label mb-5 flex items-center gap-3"><span class="dot"></span>The toolkit</div>
+            <h2 class="serif serif-h2 text-[42px] leading-[44px] lg:text-[60px] lg:leading-[60px] max-w-[760px]">Eight tools that share<br class="hidden sm:block" /> one set of books</h2>
+          </div>
+          <p class="max-w-[420px] text-[17px] leading-[26px] text-stone-600">Log a payment once and it shows up everywhere: the dashboard, the budget, the forecast, the P&amp;L and the tax estimate.</p>
+        </div>
+      </div>
+      <div class="line-t line-b">
+        <div id="featureGrid" class="max-w-container mx-auto lg:line-l lg:line-r grid sm:grid-cols-2 lg:grid-cols-4"></div>
+      </div>
+    </section>
+
+    <!-- Preview -->
+    <section id="preview" class="scroll-mt-4">
+      <div class="max-w-container mx-auto px-4 lg:px-10 py-24 lg:py-32 grid lg:grid-cols-[1fr_1.35fr] gap-12 lg:gap-20 items-center">
+        <div class="reveal">
+          <div class="label mb-5 flex items-center gap-3"><span class="dot"></span>At a glance</div>
+          <h2 class="serif serif-h2 text-[40px] leading-[42px] lg:text-[54px] lg:leading-[54px]">Six months of money<br class="hidden sm:block" /> on one screen</h2>
+          <p class="mt-6 text-[17px] leading-[26px] text-stone-600 max-w-[480px]">Income against expenses, month by month. Hover any month for the exact figures, then open the dashboard to see what drove it.</p>
+          <ul class="mt-8 space-y-3 text-[15px] text-stone-300">
+            <li class="flex gap-3"><span class="font-mono text-[12px] text-stone-600 pt-[2px]">01</span>Cash on hand across every account</li>
+            <li class="flex gap-3"><span class="font-mono text-[12px] text-stone-600 pt-[2px]">02</span>Overdue invoices flagged the day they slip</li>
+            <li class="flex gap-3"><span class="font-mono text-[12px] text-stone-600 pt-[2px]">03</span>A 90-day forecast with what-if sliders</li>
+          </ul>
+          <a href="#dashboard" class="btn btn-ghost mt-9">OPEN THE DASHBOARD <svg class="arr" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1.5 7h11M8 2.5 12.5 7 8 11.5"/></svg></a>
+        </div>
+        <div class="reveal panel p-5 lg:p-7">
+          <div class="flex items-center justify-between gap-4 mb-5 flex-wrap">
+            <div><div class="label">Income vs expenses</div><div class="serif text-[26px] mt-1" id="lpNet">&nbsp;</div></div>
+            <div class="legend"><span><i style="background:#2fa866"></i>Income</span><span><i style="background:#8a6ce8"></i>Expenses</span></div>
+          </div>
+          <div id="landingChart" class="chart h-[280px]"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How it works -->
+    <section id="how" class="line-t scroll-mt-4">
+      <div class="max-w-container mx-auto px-4 lg:px-10 pt-24 lg:pt-32 pb-14">
+        <div class="reveal">
+          <div class="label mb-5 flex items-center gap-3"><span class="dot"></span>How it works</div>
+          <h2 class="serif serif-h2 text-[40px] leading-[42px] lg:text-[54px] lg:leading-[54px]">Set up in an afternoon</h2>
+        </div>
+      </div>
+      <div class="line-t line-b">
+        <div class="max-w-container mx-auto lg:line-l lg:line-r grid lg:grid-cols-3">
+          <div class="reveal p-8 lg:p-10 lg:min-h-[300px] flex flex-col dash-b lg:border-b-0 lg:dash-r">
+            <div class="flex items-center gap-3"><span class="w-2 h-2 rounded-full bg-stone-800"></span><span class="font-mono text-[12px] text-stone-600">STEP 01</span></div>
+            <h3 class="serif text-[30px] leading-[32px] mt-8">Add your accounts</h3>
+            <p class="mt-4 text-[15px] leading-[24px] text-stone-600">Name your checking and savings accounts and enter today's balances. Set your categories and tax set-aside rate.</p>
+            <a href="#settings" class="mt-auto pt-8 font-mono text-[12px] tracking-[.05em] text-stone-100 hover:text-mint-500 transition-colors">OPEN SETTINGS →</a>
+          </div>
+          <div class="reveal p-8 lg:p-10 lg:min-h-[300px] flex flex-col dash-b lg:border-b-0 lg:dash-r" style="transition-delay:80ms">
+            <div class="flex items-center gap-3"><span class="w-2 h-2 rounded-full bg-stone-800"></span><span class="font-mono text-[12px] text-stone-600">STEP 02</span></div>
+            <h3 class="serif text-[30px] leading-[32px] mt-8">Import or log transactions</h3>
+            <p class="mt-4 text-[15px] leading-[24px] text-stone-600">Upload a CSV export from your bank, or add entries by hand. Rules sort recurring vendors into the right category.</p>
+            <a href="#transactions" class="mt-auto pt-8 font-mono text-[12px] tracking-[.05em] text-stone-100 hover:text-mint-500 transition-colors">OPEN TRANSACTIONS →</a>
+          </div>
+          <div class="reveal p-8 lg:p-10 lg:min-h-[300px] flex flex-col" style="transition-delay:160ms">
+            <div class="flex items-center gap-3"><span class="w-2 h-2 rounded-full bg-mint-500"></span><span class="font-mono text-[12px] text-stone-600">STEP 03</span></div>
+            <h3 class="serif text-[30px] leading-[32px] mt-8">Read the dashboard</h3>
+            <p class="mt-4 text-[15px] leading-[24px] text-stone-600">Profit, cash, open invoices, budget pace and the next tax payment, updated the moment anything changes.</p>
+            <a href="#dashboard" class="mt-auto pt-8 font-mono text-[12px] tracking-[.05em] text-stone-100 hover:text-mint-500 transition-colors">OPEN DASHBOARD →</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Privacy -->
+    <section id="privacy" class="scroll-mt-4">
+      <div class="max-w-container mx-auto px-4 lg:px-10 py-24 lg:py-32 grid lg:grid-cols-2 gap-12 lg:gap-20">
+        <div class="reveal">
+          <div class="label mb-5 flex items-center gap-3"><span class="dot"></span>Privacy</div>
+          <h2 class="serif serif-h2 text-[40px] leading-[42px] lg:text-[54px] lg:leading-[54px]">No sign-up.<br />No bank login.</h2>
+        </div>
+        <div class="reveal grid sm:grid-cols-2 gap-px bg-stone-900 border border-stone-900">
+          <div class="bg-stone-1100 p-6"><div class="font-mono text-[12px] text-stone-600">STORAGE</div><p class="mt-3 text-[15px] leading-[23px] text-stone-300">Everything is saved in this browser's local storage. Nothing is sent to a server.</p></div>
+          <div class="bg-stone-1100 p-6"><div class="font-mono text-[12px] text-stone-600">BACKUPS</div><p class="mt-3 text-[15px] leading-[23px] text-stone-300">Export a JSON backup any time and restore it on another computer.</p></div>
+          <div class="bg-stone-1100 p-6"><div class="font-mono text-[12px] text-stone-600">EXPORTS</div><p class="mt-3 text-[15px] leading-[23px] text-stone-300">Transactions and P&amp;L reports export to CSV for your accountant.</p></div>
+          <div class="bg-stone-1100 p-6"><div class="font-mono text-[12px] text-stone-600">SAMPLE DATA</div><p class="mt-3 text-[15px] leading-[23px] text-stone-300">It opens with a sample design studio. Clear it when you're ready to use your own.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="line-t">
+      <div class="max-w-container mx-auto px-4 lg:px-10 py-20 lg:py-28 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8 reveal">
+        <h2 class="serif serif-h2 text-[38px] leading-[40px] lg:text-[54px] lg:leading-[54px] max-w-[760px]">Start with the sample studio, or start with your own books.</h2>
+        <div class="flex flex-wrap gap-3">
+          <a href="#dashboard" class="btn btn-primary !h-[42px] !px-5">EXPLORE THE SAMPLE <svg class="arr" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1.5 7h11M8 2.5 12.5 7 8 11.5"/></svg></a>
+          <button type="button" data-action="start-fresh" class="btn btn-ghost !h-[42px] !px-5">START FRESH</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="line-t">
+      <div class="max-w-container mx-auto px-4 lg:px-10 py-14 grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
+        <div>
+          <a href="#home" class="flex items-center gap-2.5 text-stone-100"><svg width="26" height="26" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="1.5" width="25" height="25" rx="7"/><path d="M7 18.5l4.5-5 3.5 3 6-7" stroke="#85eda5" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 22h14" stroke-opacity=".4"/></svg><span class="serif text-[22px]">Ledgerline</span></a>
+          <p class="mt-4 text-[14px] leading-[22px] text-stone-600 max-w-[320px]">A finance tracker for small businesses. Tax figures are estimates to plan with, not tax advice.</p>
+        </div>
+        <div><div class="label mb-4">Track</div><ul class="space-y-2.5 text-[14px] text-stone-300"><li><a class="hover:text-mint-500" href="#dashboard">Dashboard</a></li><li><a class="hover:text-mint-500" href="#transactions">Transactions</a></li><li><a class="hover:text-mint-500" href="#invoices">Invoices</a></li></ul></div>
+        <div><div class="label mb-4">Plan</div><ul class="space-y-2.5 text-[14px] text-stone-300"><li><a class="hover:text-mint-500" href="#budgets">Budgets</a></li><li><a class="hover:text-mint-500" href="#cashflow">Cash flow</a></li><li><a class="hover:text-mint-500" href="#taxes">Taxes</a></li></ul></div>
+        <div><div class="label mb-4">Review</div><ul class="space-y-2.5 text-[14px] text-stone-300"><li><a class="hover:text-mint-500" href="#reports">Reports</a></li><li><a class="hover:text-mint-500" href="#settings">Settings &amp; backup</a></li></ul></div>
+      </div>
+      <div class="line-t">
+        <div class="max-w-container mx-auto px-4 lg:px-10 h-14 flex items-center justify-between label"><span>© <span id="yr"></span> Ledgerline</span><span class="hidden sm:inline">Saved locally · No account needed</span></div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ===================== APP ===================== -->
+  <div id="app" hidden>
+    <aside id="sidebar" class="fixed inset-y-0 left-0 w-[248px] line-r bg-stone-1100 z-40 flex flex-col -translate-x-full lg:translate-x-0" aria-label="Main navigation">
+      <div class="h-16 line-b px-5 flex items-center justify-between">
+        <a href="#home" class="flex items-center gap-2.5 text-stone-100" aria-label="Ledgerline home">
+          <svg width="26" height="26" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="1.5" width="25" height="25" rx="7"/><path d="M7 18.5l4.5-5 3.5 3 6-7" stroke="#85eda5" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 22h14" stroke-opacity=".4"/></svg>
+          <span class="serif text-[22px] leading-none">Ledgerline</span>
+        </a>
+        <button type="button" class="icon-btn lg:hidden" data-action="menu-close" aria-label="Close menu"><svg width="14" height="14" viewBox="0 0 14 14" stroke="currentColor" stroke-width="1.4"><path d="M2 2l10 10M12 2 2 12"/></svg></button>
+      </div>
+      <nav id="nav" class="px-3 py-4 flex flex-col gap-1 overflow-y-auto"></nav>
+      <div class="mt-auto p-4 line-t">
+        <div class="label">Business</div>
+        <div id="sbBiz" class="mt-1 text-[14px] text-stone-100 truncate"></div>
+        <div class="mt-3 label">Cash on hand</div>
+        <div id="sbCash" class="serif text-[24px] mt-0.5"></div>
+        <a href="#home" class="mt-4 inline-flex font-mono text-[11px] tracking-[.06em] text-stone-600 hover:text-stone-100">← BACK TO SITE</a>
+      </div>
+    </aside>
+    <div id="scrim" class="fixed inset-0 bg-black/60 z-30 lg:hidden" hidden data-action="menu-close"></div>
+
+    <div class="lg:pl-[248px] min-h-screen flex flex-col">
+      <header class="h-16 line-b flex items-center justify-between gap-3 px-4 lg:px-8 sticky top-0 z-20 bg-stone-1100">
+        <div class="flex items-center gap-3 min-w-0">
+          <button type="button" class="icon-btn lg:hidden -ml-1" data-action="menu-open" aria-label="Open menu"><svg width="18" height="18" viewBox="0 0 18 18" stroke="currentColor" stroke-width="1.4"><path d="M2 5h14M2 9h14M2 13h14"/></svg></button>
+          <div class="font-mono text-[12px] tracking-[.06em] text-stone-600 truncate"><span class="hidden sm:inline">LEDGERLINE&nbsp;/&nbsp;</span><span id="crumb" class="text-stone-100"></span></div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" class="btn btn-ghost btn-sm hidden md:inline-flex" data-action="add-invoice">+ INVOICE</button>
+          <button type="button" class="btn btn-primary btn-sm" data-action="add-tx"><span class="sm:hidden">+ ADD</span><span class="hidden sm:inline">+ TRANSACTION</span></button>
+        </div>
+      </header>
+      <main id="view" class="flex-1 px-4 lg:px-8 py-7 lg:py-9 w-full max-w-[1360px]"></main>
+      <footer class="line-t px-4 lg:px-8 h-12 flex items-center justify-between label">
+        <span>Saved in this browser</span><span id="savedAt"></span>
+      </footer>
+    </div>
+  </div>
+
+  <dialog id="modal" aria-labelledby="modalTitle"></dialog>
+  <div id="toasts" aria-live="polite"></div>
+  <div id="tip" hidden></div>
+  <div id="printArea"></div>
+  <input type="file" id="csvFile" accept=".csv,text/csv" hidden />
+  <input type="file" id="jsonFile" accept=".json,application/json" hidden />
+
+<script>
+(function () {
+  'use strict';
+  document.documentElement.classList.add('js');
+
+  /* ---------------- helpers ---------------- */
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-3);
+  const pad = (n) => String(n).padStart(2, '0');
+  const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const parseD = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+  const TODAY = iso(new Date());
+  const addDays = (s, n) => { const d = parseD(s); d.setDate(d.getDate() + n); return iso(d); };
+  const daysBetween = (a, b) => Math.round((parseD(b) - parseD(a)) / 864e5);
+  const monthKey = (s) => s.slice(0, 7);
+  const endOfMonth = (k) => { const [y, m] = k.split('-').map(Number); return iso(new Date(y, m, 0)); };
+  const fmtMonth = (k, long) => parseD(k + '-01').toLocaleDateString('en-US', long ? { month: 'long', year: 'numeric' } : { month: 'short' });
+  const fmtDate = (s) => parseD(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const fmtShort = (s) => parseD(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const sum = (a, f) => a.reduce((t, x) => t + (f ? f(x) : x), 0);
+  const round2 = (n) => Math.round(n * 100) / 100;
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let ANIM = !reduced;
+
+  const fmtCache = {};
+  function money(n, dec = 2) {
+    const k = S.settings.currency + dec;
+    if (!fmtCache[k]) fmtCache[k] = new Intl.NumberFormat('en-US', { style: 'currency', currency: S.settings.currency, minimumFractionDigits: dec, maximumFractionDigits: dec });
+    return fmtCache[k].format(Math.abs(n) < 0.005 ? 0 : n || 0);
+  }
+  const money0 = (n) => money(n, 0);
+  function shortMoney(n) {
+    const sym = money(0, 0).replace(/[\d.,\s]/g, '');
+    const a = Math.abs(n), s = n < 0 ? '-' : '';
+    if (a >= 1e6) return s + sym + (a / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (a >= 1e3) return s + sym + (a / 1e3).toFixed(a >= 1e4 ? 0 : 1).replace(/\.0$/, '') + 'k';
+    return s + sym + Math.round(a);
+  }
+  const FMT = { money0, money, int: (n) => Math.round(n).toLocaleString('en-US'), pct: (n) => n.toFixed(1) + '%', mo: (n) => n.toFixed(1) };
+
+  const ICON = {
+    edit: '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2L5 11H3V9z"/></svg>',
+    trash: '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2.5 4h9M5.5 4V2.5h3V4M4 4l.6 7.5h4.8L10 4"/></svg>',
+    eye: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/></svg>',
+    arrow: '<svg class="arr" width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1.5 7h11M8 2.5 12.5 7 8 11.5"/></svg>',
+    left: '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M9 2 4 7l5 5"/></svg>',
+    right: '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="m5 2 5 5-5 5"/></svg>',
+  };
+  const NAV = [
+    ['dashboard', 'Dashboard', '<path d="M2 2h5v5H2zM9 2h5v3H9zM9 7h5v7H9zM2 9h5v5H2z"/>'],
+    ['transactions', 'Transactions', '<path d="M2 5h11M10 2l3 3-3 3M14 11H3M6 8l-3 3 3 3"/>'],
+    ['invoices', 'Invoices', '<path d="M4 1.5h6l3 3v10H4zM10 1.5v3h3M6.5 8h4M6.5 11h4"/>'],
+    ['budgets', 'Budgets', '<circle cx="8" cy="8" r="6"/><path d="M8 2v6h6"/>'],
+    ['cashflow', 'Cash flow', '<path d="M1.5 12l4-4 3 3 6-6M10.5 5h4v4"/>'],
+    ['reports', 'Reports', '<path d="M2 14V2M2 14h12M5 11V8M8 11V5M11 11V7"/>'],
+    ['taxes', 'Taxes', '<path d="M3 13 13 3"/><circle cx="4.5" cy="4.5" r="1.6"/><circle cx="11.5" cy="11.5" r="1.6"/>'],
+    ['settings', 'Settings', '<circle cx="8" cy="8" r="2.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/>'],
+  ];
+
+  /* ---------------- data ---------------- */
+  const KEY = 'ledgerline:v1';
+  const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD'];
+
+  function seed() {
+    let s = 20261109;
+    const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    const pick = (a) => a[Math.floor(r() * a.length)];
+    const clients = ['Kestrel Outfitters', 'Birchwood Bakery', 'Maple Row Inn', 'Lakeside Dental Group', 'Oakline Builders', 'Cedar & Stone', 'Fernhill Farm', 'Harbor & Pine'];
+    const meals = ['Client lunch · Depot Café', 'Coffee meeting · Northshire Roasters', 'Team lunch · Mill Street Deli', 'Client dinner · The Copper Pot'];
+    const tx = [];
+    const add = (date, desc, amount, type, category, account = 'chk') => { if (date <= TODAY) tx.push({ id: uid(), date, desc, amount: round2(amount), type, category, account, note: '' }); };
+    const now = parseD(TODAY);
+    for (let m = 6; m >= 0; m--) {
+      const y = now.getFullYear(), mo = now.getMonth() - m;
+      const d = (day) => iso(new Date(y, mo, day));
+      add(d(1), 'Studio rent · Mill Street', 2400, 'expense', 'Rent');
+      add(d(1), 'Retainer · Harbor & Pine', 4500, 'income', 'Retainers');
+      add(d(15), 'Payroll · first half', 3850, 'expense', 'Payroll');
+      add(d(28), 'Payroll · second half', 3850, 'expense', 'Payroll');
+      add(d(3), 'Adobe Creative Cloud', 89.99, 'expense', 'Software');
+      add(d(4), 'Figma Professional', 45, 'expense', 'Software');
+      add(d(5), 'Google Workspace', 36, 'expense', 'Software');
+      add(d(9), 'Electric & internet', 150 + r() * 70, 'expense', 'Utilities');
+      add(d(12), 'Business insurance premium', 212, 'expense', 'Insurance');
+      const n = 2 + Math.floor(r() * 3);
+      for (let i = 0; i < n; i++) add(d(6 + Math.floor(r() * 20)), `Project payment · ${pick(clients.slice(0, 7))}`, 1800 + Math.round(r() * 42) * 100, 'income', 'Client projects');
+      for (let i = 0; i < 4; i++) add(d(2 + Math.floor(r() * 25)), pick(meals), 18 + r() * 90, 'expense', 'Meals');
+      add(d(10 + Math.floor(r() * 10)), 'Social ads campaign', 250 + r() * 380, 'expense', 'Marketing');
+      if (r() > 0.4) add(d(14 + Math.floor(r() * 10)), 'Freelance illustrator · J. Ortiz', 600 + r() * 900, 'expense', 'Contractors');
+      if (r() > 0.5) add(d(8 + Math.floor(r() * 15)), 'Train fare · client visit', 120 + r() * 200, 'expense', 'Travel');
+      if (m === 3) add(d(18), 'Laptop · 14-inch workstation', 2499, 'expense', 'Equipment');
+      add(d(20), 'Office supplies', 20 + r() * 80, 'expense', 'Supplies');
+      if (r() > 0.3) add(d(25), 'Interest · savings reserve', 12 + r() * 8, 'income', 'Interest', 'sav');
+    }
+    const inv = (num, client, email, issueOff, dueOff, items, status, paidOff, taxPct = 0) => ({
+      id: uid(), number: 'INV-' + num, client, email, issue: addDays(TODAY, issueOff), due: addDays(TODAY, dueOff), items, taxPct, status,
+      paidDate: paidOff != null ? addDays(TODAY, paidOff) : null, notes: 'Thank you for your business. Payment is due within 30 days.',
+    });
+    const invoices = [
+      inv(1036, 'Harbor & Pine', 'accounts@harborandpine.example', -100, -70, [{ desc: 'Annual report design', qty: 1, rate: 5200 }], 'paid', -68),
+      inv(1037, 'Oakline Builders', 'office@oakline.example', -85, -55, [{ desc: 'Site photography', qty: 2, rate: 950 }, { desc: 'Photo retouching', qty: 12, rate: 45 }], 'paid', -58),
+      inv(1038, 'Kestrel Outfitters', 'finance@kestrel.example', -70, -40, [{ desc: 'Brand refresh', qty: 1, rate: 6400 }], 'paid', -38),
+      inv(1039, 'Birchwood Bakery', 'hello@birchwood.example', -60, -30, [{ desc: 'Packaging design', qty: 1, rate: 3200 }, { desc: 'Print preparation', qty: 4, rate: 95 }], 'paid', -25),
+      inv(1040, 'Maple Row Inn', 'stay@maplerow.example', -45, -15, [{ desc: 'Website design, phase 1', qty: 1, rate: 4800 }], 'sent'),
+      inv(1041, 'Lakeside Dental Group', 'admin@lakesidedental.example', -38, -8, [{ desc: 'Patient brochure', qty: 1, rate: 1850 }, { desc: 'Office photography', qty: 6, rate: 140 }], 'sent'),
+      inv(1042, 'Oakline Builders', 'office@oakline.example', -20, 10, [{ desc: 'Jobsite signage', qty: 1, rate: 2750 }], 'sent'),
+      inv(1043, 'Cedar & Stone', 'studio@cedarstone.example', -10, 20, [{ desc: 'Social media kit', qty: 1, rate: 1600 }, { desc: 'Copywriting', qty: 8, rate: 85 }], 'sent'),
+      inv(1044, 'Fernhill Farm', 'farm@fernhill.example', -3, 27, [{ desc: 'Product label design', qty: 1, rate: 2200 }], 'draft'),
+      inv(1045, 'Harbor & Pine', 'accounts@harborandpine.example', -2, 12, [{ desc: 'Campaign extras (hours)', qty: 10, rate: 120 }], 'sent'),
+    ];
+    const nextDay = (day) => { const t = parseD(TODAY); const c = new Date(t.getFullYear(), t.getMonth(), day); if (iso(c) <= TODAY) c.setMonth(c.getMonth() + 1); return iso(c); };
+    const rec = (name, type, amount, category, freq, next) => ({ id: uid(), name, type, amount, category, freq, next });
+    const state = {
+      version: 1,
+      settings: { business: 'Northfield Design Studio', owner: 'Sam Rivera', email: 'sam@northfield.example', currency: 'USD', taxRate: 28, lowBalance: 15000 },
+      accounts: [{ id: 'chk', name: 'Operating checking', opening: 14200 }, { id: 'sav', name: 'Savings reserve', opening: 25000 }],
+      categories: {
+        income: ['Client projects', 'Retainers', 'Interest', 'Other income'],
+        expense: ['Payroll', 'Rent', 'Software', 'Contractors', 'Marketing', 'Meals', 'Travel', 'Utilities', 'Insurance', 'Equipment', 'Supplies', 'Other expense'],
+      },
+      transactions: tx,
+      invoices,
+      budgets: [['Marketing', 600], ['Meals', 300], ['Software', 200], ['Travel', 400], ['Supplies', 100], ['Contractors', 1200], ['Utilities', 220]].map(([category, limit]) => ({ id: uid(), category, limit })),
+      recurring: [
+        rec('Harbor & Pine retainer', 'income', 4500, 'Retainers', 'monthly', nextDay(1)),
+        rec('Average project income (estimate)', 'income', 8500, 'Client projects', 'monthly', nextDay(20)),
+        rec('Studio rent', 'expense', 2400, 'Rent', 'monthly', nextDay(1)),
+        rec('Payroll · first half', 'expense', 3850, 'Payroll', 'monthly', nextDay(15)),
+        rec('Payroll · second half', 'expense', 3850, 'Payroll', 'monthly', nextDay(28)),
+        rec('Software subscriptions', 'expense', 171, 'Software', 'monthly', nextDay(4)),
+        rec('Utilities', 'expense', 185, 'Utilities', 'monthly', nextDay(9)),
+        rec('Business insurance', 'expense', 212, 'Insurance', 'monthly', nextDay(12)),
+      ],
+      rules: [{ id: uid(), match: 'adobe', category: 'Software' }, { id: uid(), match: 'payroll', category: 'Payroll' }, { id: uid(), match: 'train', category: 'Travel' }, { id: uid(), match: 'ads', category: 'Marketing' }],
+      taxPaid: {},
+      savedAt: Date.now(),
+    };
+    // Mark past-due estimated tax quarters as paid so the sample looks like a real year.
+    const tmp = S; S = state;
+    taxPeriods(+TODAY.slice(0, 4)).forEach((p) => { if (p.due < TODAY && p.est > 0) state.taxPaid[p.key] = Math.round(p.est); });
+    S = tmp || state;
+    return state;
+  }
+
+  function blank() {
+    const base = seed();
+    return Object.assign(base, {
+      transactions: [], invoices: [], budgets: [], recurring: [], taxPaid: {},
+      accounts: base.accounts.map((a) => ({ ...a, opening: 0 })),
+      settings: { ...base.settings, business: 'My business', owner: '', email: '' },
+    });
+  }
+
+  let S = null;
+  function load() {
+    try { const raw = localStorage.getItem(KEY); if (raw) { const s = JSON.parse(raw); if (s && s.version === 1 && Array.isArray(s.transactions)) return s; } } catch (e) { /* ignore */ }
+    return null;
+  }
+  function save() {
+    S.savedAt = Date.now();
+    try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast('Could not save: browser storage is full or blocked', 'err'); }
+    const el = $('#savedAt'); if (el) el.textContent = 'Last saved ' + new Date(S.savedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+
+  /* ---------------- domain logic ---------------- */
+  const signed = (t) => (t.type === 'income' ? t.amount : -t.amount);
+  function totals(a, b) {
+    const list = S.transactions.filter((t) => t.date >= a && t.date <= b);
+    const inc = sum(list.filter((t) => t.type === 'income'), (t) => t.amount);
+    const exp = sum(list.filter((t) => t.type === 'expense'), (t) => t.amount);
+    return { inc, exp, net: inc - exp, list };
+  }
+  const acctBalance = (id) => { const a = S.accounts.find((x) => x.id === id); return (a ? +a.opening || 0 : 0) + sum(S.transactions.filter((t) => t.account === id), signed); };
+  const cashBalance = () => sum(S.accounts, (a) => acctBalance(a.id));
+  const acctName = (id) => (S.accounts.find((a) => a.id === id) || {}).name || 'Unassigned';
+  const allCats = () => [...S.categories.income, ...S.categories.expense];
+  function groupSum(list, key) {
+    const m = new Map(); list.forEach((x) => m.set(x[key], (m.get(x[key]) || 0) + x.amount));
+    return [...m].map(([k, v]) => ({ k, v })).sort((a, b) => b.v - a.v);
+  }
+  function lastNMonths(n) {
+    const t = parseD(TODAY); const out = [];
+    for (let i = n - 1; i >= 0; i--) out.push(iso(new Date(t.getFullYear(), t.getMonth() - i, 1)).slice(0, 7));
+    return out;
+  }
+  function monthsBetween(a, b) {
+    const out = []; const d = parseD(a.slice(0, 7) + '-01'); const end = b.slice(0, 7);
+    while (iso(d).slice(0, 7) <= end && out.length < 60) { out.push(iso(d).slice(0, 7)); d.setMonth(d.getMonth() + 1); }
+    return out;
+  }
+  function rangeFor(key) {
+    const t = parseD(TODAY), y = t.getFullYear(), m = t.getMonth(), q = Math.floor(m / 3);
+    switch (key) {
+      case '30d': return [addDays(TODAY, -29), TODAY, 'Last 30 days'];
+      case 'quarter': return [iso(new Date(y, q * 3, 1)), TODAY, 'This quarter'];
+      case 'lastq': return [iso(new Date(y, q * 3 - 3, 1)), iso(new Date(y, q * 3, 0)), 'Last quarter'];
+      case 'ytd': return [`${y}-01-01`, TODAY, 'Year to date'];
+      case '12m': return [iso(new Date(y, m - 11, 1)), TODAY, 'Last 12 months'];
+      case 'lastyear': return [`${y - 1}-01-01`, `${y - 1}-12-31`, 'Last year'];
+      default: return [iso(new Date(y, m, 1)), TODAY, 'This month'];
+    }
+  }
+  function prevRange(a, b) { const len = daysBetween(a, b); const pb = addDays(a, -1); return [addDays(pb, -len), pb]; }
+  function suggestCategory(desc, type) {
+    const d = (desc || '').toLowerCase();
+    const rule = S.rules.find((r) => r.match && d.includes(r.match.toLowerCase()) && S.categories[type].includes(r.category));
+    return rule ? rule.category : null;
+  }
+
+  const invoiceSubtotal = (inv) => sum(inv.items, (i) => (+i.qty || 0) * (+i.rate || 0));
+  const invoiceTotal = (inv) => round2(invoiceSubtotal(inv) * (1 + (+inv.taxPct || 0) / 100));
+  const isOverdue = (inv) => inv.status === 'sent' && inv.due < TODAY;
+  const invStatus = (inv) => (isOverdue(inv) ? 'overdue' : inv.status);
+  const openInvoices = () => S.invoices.filter((i) => i.status === 'sent');
+  function nextInvNumber() {
+    const nums = S.invoices.map((i) => parseInt(String(i.number).replace(/\D/g, ''), 10)).filter((n) => !isNaN(n));
+    return 'INV-' + (nums.length ? Math.max(...nums) + 1 : 1001);
+  }
+
+  function budgetRows(mk) {
+    const a = mk + '-01', b = endOfMonth(mk);
+    const t = totals(a, b > TODAY ? TODAY : b);
+    const isCur = mk === monthKey(TODAY);
+    const dim = parseD(b).getDate();
+    const elapsed = isCur ? parseD(TODAY).getDate() : dim;
+    return S.budgets.map((bu) => {
+      const spent = sum(t.list.filter((x) => x.type === 'expense' && x.category === bu.category), (x) => x.amount);
+      // Typical month = average of the last 3 full months. Straight-line pace only counts after mid-month,
+      // so bills paid once early in the month don't look like overspending.
+      const typical = sum(lastNMonths(4).slice(0, 3).map((k) => sum(S.transactions.filter((x) => x.type === 'expense' && x.category === bu.category && monthKey(x.date) === k), (x) => x.amount))) / 3;
+      const projected = isCur ? Math.max(spent, typical, elapsed >= 15 ? (spent / elapsed) * dim : 0) : spent;
+      const state = spent > bu.limit ? 'over' : projected > bu.limit * 1.02 ? 'risk' : 'ok';
+      return { ...bu, cat: bu.category, spent, projected, state, pct: bu.limit ? spent / bu.limit : 0 };
+    });
+  }
+
+  function stepFreq(d, f) {
+    const x = parseD(d);
+    if (f === 'weekly') x.setDate(x.getDate() + 7);
+    else if (f === 'biweekly') x.setDate(x.getDate() + 14);
+    else if (f === 'yearly') x.setFullYear(x.getFullYear() + 1);
+    else {
+      const n = f === 'quarterly' ? 3 : 1; const day = x.getDate();
+      x.setDate(1); x.setMonth(x.getMonth() + n);
+      x.setDate(Math.min(day, new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate()));
+    }
+    return iso(x);
+  }
+  function occurrences(r, from, to) {
+    const out = []; let d = r.next, g = 0;
+    while (d < from && g++ < 800) d = stepFreq(d, r.freq);
+    while (d <= to && g++ < 1600) { out.push(d); d = stepFreq(d, r.freq); }
+    return out;
+  }
+
+  function taxPeriods(y) {
+    return [
+      { q: 'Q1', a: `${y}-01-01`, b: `${y}-03-31`, due: `${y}-04-15`, months: 'Jan – Mar' },
+      { q: 'Q2', a: `${y}-04-01`, b: `${y}-05-31`, due: `${y}-06-15`, months: 'Apr – May' },
+      { q: 'Q3', a: `${y}-06-01`, b: `${y}-08-31`, due: `${y}-09-15`, months: 'Jun – Aug' },
+      { q: 'Q4', a: `${y}-09-01`, b: `${y}-12-31`, due: `${y + 1}-01-15`, months: 'Sep – Dec' },
+    ].map((p) => {
+      const future = p.a > TODAY;
+      const t = future ? { net: 0 } : totals(p.a, p.b > TODAY ? TODAY : p.b);
+      const est = Math.max(0, t.net) * (+S.settings.taxRate || 0) / 100;
+      const key = `${y}-${p.q}`; const paid = +S.taxPaid[key] || 0;
+      return { ...p, key, label: `${p.q} ${y}`, net: t.net, est, paid, owed: Math.max(0, est - paid), future, partial: !future && p.b > TODAY };
+    });
+  }
+  function nextTaxDue() {
+    const y = +TODAY.slice(0, 4);
+    return [...taxPeriods(y - 1), ...taxPeriods(y)].find((p) => p.due >= TODAY && p.a <= TODAY) || null;
+  }
+
+  function forecast(days, sc = {}) {
+    const start = addDays(TODAY, 1), end = addDays(TODAY, days);
+    const ev = [];
+    S.recurring.forEach((r) => occurrences(r, start, end).forEach((d) => {
+      const k = r.type === 'income' ? 1 + (sc.rev || 0) / 100 : 1 + (sc.exp || 0) / 100;
+      ev.push({ d, name: r.name, amount: (r.type === 'income' ? 1 : -1) * r.amount * k, kind: r.type === 'income' ? 'Recurring income' : 'Recurring cost' });
+    }));
+    openInvoices().forEach((inv) => {
+      let d = inv.due < start ? addDays(TODAY, 7) : inv.due; d = addDays(d, sc.delay || 0);
+      if (d <= end) ev.push({ d, name: `${inv.number} · ${inv.client}`, amount: invoiceTotal(inv), kind: isOverdue(inv) ? 'Overdue invoice' : 'Invoice due' });
+    });
+    const tq = nextTaxDue();
+    if (tq && tq.due >= start && tq.due <= end && tq.owed > 0) ev.push({ d: tq.due, name: `Estimated tax · ${tq.label}`, amount: -tq.owed, kind: 'Tax payment' });
+    ev.sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : b.amount - a.amount));
+    let bal = cashBalance(); const series = [{ d: TODAY, v: bal }]; let i = 0;
+    for (let k = 1; k <= days; k++) { const d = addDays(TODAY, k); while (i < ev.length && ev[i].d === d) { bal += ev[i].amount; i++; } series.push({ d, v: bal }); }
+    const min = series.reduce((m, p) => (p.v < m.v ? p : m), series[0]);
+    return { series, ev, min, end: series[series.length - 1].v, inflow: sum(ev.filter((e) => e.amount > 0), (e) => e.amount), outflow: -sum(ev.filter((e) => e.amount < 0), (e) => e.amount) };
+  }
+  function runway() {
+    const months = lastNMonths(4).slice(0, 3);
+    const burns = months.map((k) => { const t = totals(k + '-01', endOfMonth(k)); return t.exp - t.inc; });
+    const avg = sum(burns) / burns.length;
+    const avgExp = sum(months.map((k) => totals(k + '-01', endOfMonth(k)).exp)) / months.length;
+    return { netBurn: avg, avgExp, months: avg > 0 ? cashBalance() / avg : null, grossMonths: avgExp > 0 ? cashBalance() / avgExp : null };
+  }
+  function upcoming(days) {
+    const f = forecast(days); return f.ev;
+  }
+
+  /* ---------------- UI primitives ---------------- */
+  const tipEl = $('#tip'); let tipSrc = null;
+  function tip(html, e, src = 'chart') {
+    tipSrc = src; tipEl.innerHTML = html; tipEl.hidden = false;
+    const r = tipEl.getBoundingClientRect();
+    let x = e.clientX + 14, y = e.clientY + 14;
+    if (x + r.width > innerWidth - 8) x = e.clientX - r.width - 14;
+    if (y + r.height > innerHeight - 8) y = e.clientY - r.height - 14;
+    tipEl.style.transform = `translate(${Math.max(8, x)}px, ${Math.max(8, y)}px)`;
+  }
+  function hideTip() { tipEl.hidden = true; tipSrc = null; }
+  document.addEventListener('pointermove', (e) => {
+    const t = e.target.closest && e.target.closest('[data-tip]');
+    if (t) tip(esc(t.dataset.tip), e, 'data'); else if (tipSrc === 'data') hideTip();
+  });
+  window.addEventListener('scroll', () => { if (!tipEl.hidden) hideTip(); }, { passive: true });
+
+  function toast(msg, tone = 'ok') {
+    const t = document.createElement('div'); t.className = 'toast ' + (tone === 'err' ? 'err' : ''); t.textContent = msg;
+    $('#toasts').appendChild(t);
+    setTimeout(() => t.classList.add('out'), 2800); setTimeout(() => t.remove(), 3200);
+  }
+
+  const modal = $('#modal');
+  function openModal({ title, body, submitLabel = 'Save', onSubmit, wide = false, danger = false, footer, onOpen, extra = '' }) {
+    modal.className = wide ? 'wide' : '';
+    modal.innerHTML = `<form id="modalForm" class="flex flex-col max-h-[calc(100dvh-26px)]">
+      <div class="flex items-center justify-between px-5 sm:px-6 h-16 line-b flex-none">
+        <h2 id="modalTitle" class="serif text-[24px] leading-none">${esc(title)}</h2>
+        <button type="button" class="icon-btn" data-action="modal-close" aria-label="Close"><svg width="14" height="14" viewBox="0 0 14 14" stroke="currentColor" stroke-width="1.4"><path d="M2 2l10 10M12 2 2 12"/></svg></button>
+      </div>
+      <div class="px-5 sm:px-6 py-6 overflow-y-auto">${body}</div>
+      <div class="px-5 sm:px-6 py-4 line-t flex flex-wrap justify-end gap-2 flex-none">${footer != null ? footer : `${extra}<button type="button" class="btn btn-ghost" data-action="modal-close">Cancel</button><button type="submit" class="btn ${danger ? 'btn-danger-solid' : 'btn-primary'}">${esc(submitLabel)}</button>`}</div>
+    </form>`;
+    const form = $('#modalForm');
+    form.addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      if (!form.reportValidity()) return;
+      const fd = Object.fromEntries(new FormData(form));
+      const res = onSubmit ? onSubmit(fd, form) : undefined;
+      if (res !== false) closeModal();
+    });
+    if (!modal.open) modal.showModal();
+    if (onOpen) onOpen(form);
+    const first = form.querySelector('input:not([type=hidden]):not([type=radio]), select, textarea');
+    if (first && window.innerWidth > 640) first.focus();
+  }
+  function closeModal() { if (modal.open) modal.close(); }
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+  function confirmBox(title, text, okLabel, fn) {
+    openModal({ title, body: `<p class="text-[15px] leading-[24px] text-stone-400">${text}</p>`, submitLabel: okLabel, danger: true, onSubmit: () => { fn(); } });
+  }
+
+  function download(name, text, type) {
+    const blob = new Blob([text], { type }); const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 500);
+  }
+  const csvCell = (v) => { const s = String(v ?? ''); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+
+  /* ---------------- charts ---------------- */
+  let charts = [];
+  function chart(el, fn) {
+    if (!el) return;
+    const run = () => fn(el);
+    charts.push(run);
+    const host = el.closest('.reveal');
+    if (host && !host.classList.contains('in') && ANIM) host._onReveal = run; else run();
+  }
+  function niceStep(x) { if (!isFinite(x) || x <= 0) return 1; const e = Math.pow(10, Math.floor(Math.log10(x))); const f = x / e; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * e; }
+  function barPath(x, y, w, h) { if (h <= 0.5) return ''; const r = Math.min(4, w / 2, h); return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`; }
+
+  function barChart(el, { labels, series, height, fmt = money, title = 'Bar chart' }) {
+    const W = Math.max(260, el.clientWidth), H = height || el.clientHeight || 260;
+    const m = { t: 10, r: 4, b: 28, l: 50 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const step = niceStep(Math.max(1, ...series.flatMap((s) => s.values)) / 4), max = step * 4;
+    let g = '';
+    for (let i = 0; i <= 4; i++) { const y = m.t + ih - (ih * i) / 4; g += `<line x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}" class="gl${i === 0 ? ' base' : ''}"/><text x="${m.l - 10}" y="${y + 3.5}" text-anchor="end" class="ax">${shortMoney(step * i)}</text>`; }
+    const gw = iw / labels.length, n = series.length, gap = 2;
+    const bw = Math.max(4, Math.min(24, (gw * 0.62 - (n - 1) * gap) / n)), tw = n * bw + (n - 1) * gap;
+    let bars = '', hits = '';
+    labels.forEach((lab, i) => {
+      const cx = m.l + gw * i + gw / 2;
+      hits += `<rect class="col-bg" data-i="${i}" x="${m.l + gw * i + 2}" y="${m.t}" width="${Math.max(1, gw - 4)}" height="${ih}" rx="6"/>`;
+      series.forEach((s, j) => { const v = Math.max(0, s.values[i] || 0), h = (ih * v) / max, x = cx - tw / 2 + j * (bw + gap); bars += `<path class="bm${ANIM ? ' bar' : ''}" style="animation-delay:${i * 55 + j * 35}ms" d="${barPath(x, m.t + ih - h, bw, h)}" fill="${s.color}"/>`; });
+      if (!(labels.length > 8 && W < 520 && i % 2)) g += `<text x="${cx}" y="${H - 8}" text-anchor="middle" class="ax">${esc(lab)}</text>`;
+    });
+    el.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}">${g}${hits}${bars}</svg>`;
+    const cols = $$('.col-bg', el);
+    cols.forEach((c) => {
+      const i = +c.dataset.i;
+      const show = (e) => { cols.forEach((x) => x.classList.toggle('on', x === c)); tip(`<div class="tip-h">${esc(labels[i])}</div>` + series.map((s) => `<div class="tip-r"><i style="background:${s.color}"></i>${esc(s.name)}<b>${fmt(s.values[i] || 0)}</b></div>`).join(''), e); };
+      c.addEventListener('pointerenter', show); c.addEventListener('pointermove', show);
+      c.addEventListener('pointerleave', () => { c.classList.remove('on'); hideTip(); });
+    });
+  }
+
+  function lineChart(el, { pts, height, color = '#2fa866', threshold = null, thresholdLabel = '', fmt = money0, labelFmt = fmtShort, title = 'Line chart', dots = false, name = 'Balance' }) {
+    const W = Math.max(260, el.clientWidth), H = height || el.clientHeight || 280;
+    const m = { t: 12, r: 10, b: 28, l: 54 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+    if (!pts.length) { el.innerHTML = '<div class="h-full flex items-center justify-center text-stone-600 text-sm">No data yet</div>'; return; }
+    let lo = Math.min(...pts.map((p) => p.v)), hi = Math.max(...pts.map((p) => p.v));
+    if (threshold != null) { lo = Math.min(lo, threshold); hi = Math.max(hi, threshold); }
+    if (lo > 0 && lo < hi * 0.25) lo = 0;
+    const st = niceStep((hi - lo) / 4 || Math.abs(hi) / 4 || 1); lo = Math.floor(lo / st) * st; hi = Math.ceil(hi / st) * st; if (hi === lo) hi = lo + st;
+    const X = (i) => m.l + (pts.length < 2 ? iw / 2 : (iw * i) / (pts.length - 1)), Y = (v) => m.t + ih - ((v - lo) / (hi - lo)) * ih;
+    let g = '';
+    for (let v = lo; v <= hi + st / 2; v += st) { const y = Y(v); g += `<line x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}" class="gl${Math.abs(v) < st / 1e6 ? ' base' : ''}"/><text x="${m.l - 10}" y="${y + 3.5}" text-anchor="end" class="ax">${shortMoney(v)}</text>`; }
+    const nT = Math.min(pts.length, W < 520 ? 3 : 6);
+    for (let k = 0; k < nT; k++) { const i = nT === 1 ? 0 : Math.round((k * (pts.length - 1)) / (nT - 1)); g += `<text x="${X(i)}" y="${H - 8}" text-anchor="${k === 0 ? 'start' : k === nT - 1 ? 'end' : 'middle'}" class="ax">${esc(labelFmt(pts[i].d))}</text>`; }
+    const d = pts.map((p, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(p.v).toFixed(1)}`).join('');
+    const base = Y(Math.max(lo, Math.min(0, hi)));
+    const gid = 'g' + uid();
+    let th = '';
+    if (threshold != null) { const y = Y(threshold); th = `<line x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}" stroke="#f85156" stroke-opacity=".7" stroke-dasharray="4 4"/><text x="${W - m.r}" y="${y - 6}" text-anchor="end" class="ax" style="fill:#ff8a8d">${esc(thresholdLabel)}</text>`; }
+    const dotMarks = dots ? pts.map((p, i) => `<circle class="bm${ANIM ? ' fade' : ''}" cx="${X(i)}" cy="${Y(p.v)}" r="4" fill="${color}" stroke="#0c0c0b" stroke-width="2"/>`).join('') : '';
+    el.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}">
+      <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".22"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+      ${g}<path class="bm${ANIM ? ' fade' : ''}" d="${d}L${X(pts.length - 1)},${base}L${X(0)},${base}Z" fill="url(#${gid})"/>${th}
+      <path class="bm ln" d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${dotMarks}
+      <line class="xh bm" x1="0" x2="0" y1="${m.t}" y2="${m.t + ih}" stroke="#625d58" stroke-dasharray="3 3" visibility="hidden"/>
+      <circle class="xd bm" r="5" fill="${color}" stroke="#0c0c0b" stroke-width="2" visibility="hidden"/>
+      <rect class="ov" x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="transparent"/>
+    </svg>`;
+    const ln = $('.ln', el);
+    if (ANIM) { const len = ln.getTotalLength(); ln.style.strokeDasharray = len; ln.style.setProperty('--len', len); ln.classList.add('draw'); }
+    const xh = $('.xh', el), xd = $('.xd', el), ov = $('.ov', el);
+    const move = (e) => {
+      const r = ov.getBoundingClientRect(); const rel = (e.clientX - r.left) / r.width;
+      const i = Math.max(0, Math.min(pts.length - 1, Math.round(rel * (pts.length - 1))));
+      const x = X(i), y = Y(pts[i].v);
+      xh.setAttribute('x1', x); xh.setAttribute('x2', x); xh.setAttribute('visibility', 'visible');
+      xd.setAttribute('cx', x); xd.setAttribute('cy', y); xd.setAttribute('visibility', 'visible');
+      tip(`<div class="tip-h">${esc(labelFmt(pts[i].d))}</div><div class="tip-r"><i style="background:${color}"></i>${esc(name)}<b>${fmt(pts[i].v)}</b></div>` + (pts[i].note ? `<div class="mt-1 text-[11.5px] text-stone-600 max-w-[220px]">${esc(pts[i].note)}</div>` : ''), e);
+    };
+    ov.addEventListener('pointermove', move); ov.addEventListener('pointerenter', move);
+    ov.addEventListener('pointerleave', () => { xh.setAttribute('visibility', 'hidden'); xd.setAttribute('visibility', 'hidden'); hideTip(); });
+  }
+
+  function catBars(rows, { limit = 7, tone = 'cat' } = {}) {
+    if (!rows.length) return '<p class="text-stone-600 text-[14px] py-6">No spending in this period.</p>';
+    const top = rows.slice(0, limit); const rest = rows.slice(limit);
+    if (rest.length) top.push({ k: `Other (${rest.length})`, v: sum(rest, (r) => r.v) });
+    const max = Math.max(1, ...top.map((r) => r.v)), tot = sum(rows, (r) => r.v) || 1;
+    return top.map((r, i) => `<div class="py-2.5" data-tip="${esc(r.k)}: ${esc(money(r.v))} · ${(r.v / tot * 100).toFixed(1)}% of spending">
+      <div class="flex justify-between gap-3 text-[13.5px] mb-2"><span class="text-stone-300 truncate">${esc(r.k)}</span><span class="font-mono text-[12px] text-stone-600 whitespace-nowrap">${money0(r.v)} · ${(r.v / tot * 100).toFixed(0)}%</span></div>
+      <div class="track ${tone}"><i style="width:${(r.v / max) * 100}%;animation-delay:${i * 70}ms"></i></div></div>`).join('');
+  }
+
+  function countUps(root) {
+    $$('[data-count]', root).forEach((el) => {
+      if (el._counted) return; el._counted = true;
+      const to = +el.dataset.count, f = FMT[el.dataset.fmt] || money0;
+      if (!ANIM) { el.textContent = f(to); return; }
+      const t0 = performance.now(), dur = 1000;
+      const step = (now) => { const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3); el.textContent = f(to * e); if (p < 1) requestAnimationFrame(step); };
+      requestAnimationFrame(step);
+    });
+  }
+  let io = null;
+  function observeReveals() {
+    if (io) io.disconnect();
+    const els = $$('.reveal:not(.in)');
+    const show = (el) => { el.classList.add('in'); countUps(el); if (el._onReveal) { const f = el._onReveal; el._onReveal = null; f(); } };
+    if (!ANIM || !('IntersectionObserver' in window)) { els.forEach(show); return; }
+    io = new IntersectionObserver((es) => es.forEach((en) => { if (en.isIntersecting) { show(en.target); io.unobserve(en.target); } }), { rootMargin: '0px 0px -6% 0px', threshold: 0.06 });
+    els.forEach((e) => io.observe(e));
+    $$('[data-count]').forEach((el) => { if (!el.closest('.reveal')) countUps(el.parentElement); });
+  }
+
+  /* ---------------- shared bits ---------------- */
+  const pageHead = (title, sub, actions = '') => `<div class="reveal flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-8">
+    <div><h1 class="serif text-[38px] leading-[40px] lg:text-[46px] lg:leading-[48px]">${title}</h1>${sub ? `<p class="mt-2.5 text-[15px] leading-[23px] text-stone-600 max-w-[640px]">${sub}</p>` : ''}</div>
+    ${actions ? `<div class="flex flex-wrap items-center gap-2">${actions}</div>` : ''}</div>`;
+  const tile = (label, value, fmt, sub = '', i = 0, extraCls = '') => `<div class="reveal p-5 lg:p-6 min-h-[138px] flex flex-col justify-between gap-4 ${extraCls}" style="transition-delay:${i * 60}ms">
+    <div class="label">${label}</div>
+    <div><div class="serif text-[30px] leading-[32px] xl:text-[36px] xl:leading-[38px] whitespace-nowrap" ${typeof value === 'number' ? `data-count="${value}" data-fmt="${fmt}"` : ''}>${typeof value === 'number' ? (FMT[fmt] || money0)(value) : value}</div>
+    ${sub ? `<div class="mt-2 text-[13px] leading-[18px] text-stone-600">${sub}</div>` : ''}</div></div>`;
+  const segHtml = (action, opts, cur) => `<div class="seg" role="group">${opts.map(([v, l]) => `<button type="button" data-action="${action}" data-v="${v}" class="${String(v) === String(cur) ? 'on' : ''}" aria-pressed="${String(v) === String(cur)}">${l}</button>`).join('')}</div>`;
+  const deltaHtml = (cur, prev, goodUp = true, vs = 'vs prior') => {
+    if (!prev) return '<span class="text-stone-700">No prior period</span>';
+    const d = ((cur - prev) / Math.abs(prev)) * 100; const good = d >= 0 === goodUp;
+    return `<span class="delta ${good ? 'good' : 'bad'}">${d >= 0 ? '▲' : '▼'} ${Math.abs(d).toFixed(1)}%</span> <span class="text-stone-700">${vs}</span>`;
+  };
+  const statusHtml = (st) => `<span class="status st-${st}"><i></i>${st}</span>`;
+  const empty = (title, text, btn = '') => `<div class="py-14 px-6 text-center"><div class="serif text-[26px]">${title}</div><p class="mt-2 text-stone-600 text-[14px] max-w-[420px] mx-auto">${text}</p>${btn ? `<div class="mt-6">${btn}</div>` : ''}</div>`;
+  const panelHead = (label, right = '') => `<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 lg:px-6 min-h-14 py-3 line-b"><div class="label !text-stone-400">${label}</div>${right}</div>`;
+
+  /* ================== VIEWS ================== */
+  const UI = {
+    dash: 'month',
+    tx: { q: '', type: 'all', cat: 'all', acct: 'all', month: 'all', sort: 'date', dir: -1, page: 1 },
+    inv: 'all', bMonth: monthKey(TODAY),
+    fc: { days: 90, rev: 0, exp: 0, delay: 0 },
+    rep: 'ytd',
+  };
+
+  /* ---- Dashboard ---- */
+  function viewDashboard() {
+    const [a, b, label] = rangeFor(UI.dash);
+    const cur = totals(a, b), [pa, pb] = prevRange(a, b), prev = totals(pa, pb);
+    const cash = cashBalance(), open = openInvoices(), od = open.filter(isOverdue);
+    const fc = forecast(45);
+    const hour = new Date().getHours();
+    const greet = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+    const alerts = [];
+    if (od.length) alerts.push(['#f85156', `${od.length} invoice${od.length > 1 ? 's are' : ' is'} overdue, ${money(sum(od, invoiceTotal))} waiting to be collected.`, '#invoices', 'Review']);
+    if (fc.min.v < S.settings.lowBalance) alerts.push(['#c4832a', `Cash is projected to fall to ${money0(fc.min.v)} on ${fmtDate(fc.min.d)}, below your ${money0(S.settings.lowBalance)} alert level.`, '#cashflow', 'Forecast']);
+    const over = budgetRows(monthKey(TODAY)).filter((r) => r.state === 'over');
+    if (over.length) alerts.push(['#c4832a', `${over.map((r) => r.cat).join(', ')} ${over.length > 1 ? 'are' : 'is'} over budget this month.`, '#budgets', 'Budgets']);
+    const tq = nextTaxDue();
+    if (tq && daysBetween(TODAY, tq.due) <= 30 && tq.owed > 0) alerts.push(['#b29bff', `Estimated tax for ${tq.label} (about ${money0(tq.owed)}) is due ${fmtDate(tq.due)}.`, '#taxes', 'Taxes']);
+    const margin = cur.inc ? (cur.net / cur.inc) * 100 : 0;
+    const recent = [...S.transactions].sort((x, y) => (x.date < y.date ? 1 : x.date > y.date ? -1 : 0)).slice(0, 7);
+    const up = upcoming(21).slice(0, 7);
+    const bRows = budgetRows(monthKey(TODAY)).sort((x, y) => y.pct - x.pct).slice(0, 4);
+    const html = `
+      ${pageHead(`${greet}, ${esc(S.settings.business)}`, `Here's where things stand. Today is ${parseD(TODAY).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}.`, segHtml('dash-range', [['month', 'Month'], ['30d', '30 days'], ['quarter', 'Quarter'], ['ytd', 'YTD']], UI.dash))}
+      ${alerts.length ? `<div class="reveal mb-6 panel divide-y divide-stone-900">${alerts.map(([c, t, h, l]) => `<div class="flex items-start sm:items-center gap-3 px-5 py-3.5 text-[14px]"><span class="mt-1.5 sm:mt-0 w-2 h-2 rounded-full flex-none" style="background:${c}"></span><span class="text-stone-300 flex-1">${esc(t)}</span><a href="${h}" class="font-mono text-[11px] tracking-[.06em] text-stone-100 hover:text-mint-500 whitespace-nowrap">${l.toUpperCase()} →</a></div>`).join('')}</div>` : ''}
+      <div class="grid-lines grid-cols-2 xl:grid-cols-5 mb-6">
+        ${tile('Cash on hand', cash, 'money0', `Across ${S.accounts.length} account${S.accounts.length === 1 ? '' : 's'}`, 0, 'col-span-2 xl:col-span-1')}
+        ${tile(`Income · ${label}`, cur.inc, 'money0', deltaHtml(cur.inc, prev.inc, true), 1)}
+        ${tile(`Expenses · ${label}`, cur.exp, 'money0', deltaHtml(cur.exp, prev.exp, false), 2)}
+        ${tile('Net profit', cur.net, 'money0', `${margin.toFixed(1)}% margin`, 3)}
+        ${tile('Open invoices', sum(open, invoiceTotal), 'money0', `${open.length} open · <span class="${od.length ? 'text-coral-500' : ''}">${od.length} overdue</span>`, 4)}
+      </div>
+      <div class="grid lg:grid-cols-3 gap-6 mb-6">
+        <div class="reveal panel lg:col-span-2">
+          ${panelHead('Income vs expenses · last 6 months', '<div class="legend"><span><i style="background:#2fa866"></i>Income</span><span><i style="background:#8a6ce8"></i>Expenses</span></div>')}
+          <div class="p-5 lg:p-6"><div id="chIE" class="chart h-[270px]"></div></div>
+        </div>
+        <div class="reveal panel" style="transition-delay:80ms">
+          ${panelHead(`Where the money went · ${label}`)}
+          <div class="px-5 lg:px-6 py-3">${catBars(groupSum(cur.list.filter((t) => t.type === 'expense'), 'category'), { limit: 6 })}</div>
+        </div>
+      </div>
+      <div class="grid lg:grid-cols-3 gap-6 items-start">
+        <div class="reveal panel lg:col-span-2">
+          ${panelHead('Recent transactions', '<a href="#transactions" class="font-mono text-[11px] tracking-[.06em] text-stone-100 hover:text-mint-500">VIEW ALL →</a>')}
+          ${recent.length ? `<table class="tbl"><tbody>${recent.map((t) => `<tr>
+            <td class="!pl-5 lg:!pl-6 font-mono text-[12px] text-stone-600 whitespace-nowrap w-[1%]">${fmtShort(t.date)}</td>
+            <td class="max-w-0 w-full"><div class="text-stone-100 truncate">${esc(t.desc)}</div><div class="text-[12px] text-stone-600 truncate">${esc(t.category)}</div></td>
+            <td class="!pr-5 lg:!pr-6 text-right font-mono text-[13px] whitespace-nowrap ${t.type === 'income' ? 'text-mint-500' : 'text-stone-300'}">${t.type === 'income' ? '+' : '−'}${money(t.amount)}</td></tr>`).join('')}</tbody></table>` : empty('No transactions yet', 'Add one or import a CSV from your bank.', '<button type="button" class="btn btn-primary" data-action="add-tx">+ Add transaction</button>')}
+        </div>
+        <div class="flex flex-col gap-6">
+          <div class="reveal panel" style="transition-delay:80ms">
+            ${panelHead('Coming up · next 3 weeks', '<a href="#cashflow" class="font-mono text-[11px] tracking-[.06em] text-stone-100 hover:text-mint-500">FORECAST →</a>')}
+            <div class="px-5 lg:px-6 py-2">${up.length ? up.map((e) => `<div class="flex items-center justify-between gap-3 py-2.5 dash-b last:border-0"><div class="min-w-0"><div class="text-[14px] text-stone-200 truncate">${esc(e.name)}</div><div class="font-mono text-[11px] text-stone-600 mt-0.5">${fmtShort(e.d).toUpperCase()} · ${esc(e.kind.toUpperCase())}</div></div><div class="font-mono text-[13px] whitespace-nowrap ${e.amount > 0 ? 'text-mint-500' : 'text-stone-300'}">${e.amount > 0 ? '+' : '−'}${money0(Math.abs(e.amount))}</div></div>`).join('') : '<p class="text-stone-600 text-[14px] py-4">Nothing scheduled. Add recurring items on the Cash flow page.</p>'}</div>
+          </div>
+          <div class="reveal panel" style="transition-delay:140ms">
+            ${panelHead(`Budgets · ${fmtMonth(monthKey(TODAY), true)}`, '<a href="#budgets" class="font-mono text-[11px] tracking-[.06em] text-stone-100 hover:text-mint-500">ALL →</a>')}
+            <div class="px-5 lg:px-6 py-3">${bRows.length ? bRows.map((r, i) => `<div class="py-2.5"><div class="flex justify-between text-[13.5px] mb-2"><span class="text-stone-300">${esc(r.cat)}${r.state !== 'ok' ? ` <span class="font-mono text-[10.5px] ${r.state === 'over' ? 'text-coral-500' : 'text-[#e0a050]'}">${r.state === 'over' ? 'OVER' : 'AT RISK'}</span>` : ''}</span><span class="font-mono text-[12px] text-stone-600">${money0(r.spent)} / ${money0(r.limit)}</span></div><div class="track ${r.state === 'ok' ? '' : r.state}"><i style="width:${Math.min(100, r.pct * 100)}%;animation-delay:${i * 70}ms"></i></div></div>`).join('') : '<p class="text-stone-600 text-[14px] py-4">No budgets set yet.</p>'}</div>
+          </div>
+        </div>
+      </div>`;
+    return {
+      html, mount() {
+        const ms = lastNMonths(6);
+        const data = ms.map((k) => totals(k + '-01', endOfMonth(k)));
+        chart($('#chIE'), (el) => barChart(el, { labels: ms.map((k) => fmtMonth(k)), series: [{ name: 'Income', color: '#2fa866', values: data.map((d) => d.inc) }, { name: 'Expenses', color: '#8a6ce8', values: data.map((d) => d.exp) }], title: 'Income and expenses by month' }));
+      },
+    };
+  }
+
+  /* ---- Transactions ---- */
+  function filteredTx() {
+    const f = UI.tx, q = f.q.trim().toLowerCase();
+    const list = S.transactions.filter((t) => (f.type === 'all' || t.type === f.type) && (f.cat === 'all' || t.category === f.cat) && (f.acct === 'all' || t.account === f.acct) && (f.month === 'all' || monthKey(t.date) === f.month) && (!q || `${t.desc} ${t.category} ${t.note || ''} ${t.amount}`.toLowerCase().includes(q)));
+    const dir = f.dir;
+    list.sort((x, y) => f.sort === 'amount' ? (signed(x) - signed(y)) * dir : f.sort === 'desc' ? x.desc.localeCompare(y.desc) * dir : (x.date < y.date ? -1 : x.date > y.date ? 1 : 0) * dir);
+    return list;
+  }
+  function viewTransactions() {
+    const f = UI.tx;
+    const months = [...new Set(S.transactions.map((t) => monthKey(t.date)))].sort().reverse();
+    const sel = (name, opts, cur) => `<select class="input !h-[38px] !text-[13px]" data-filter="${name}" aria-label="${name}">${opts.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(cur) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+    const html = `
+      ${pageHead('Transactions', 'Every dollar in and out. Search, filter, edit, or bring in a CSV export from your bank.', `
+        <button type="button" class="font-mono text-[11px] tracking-[.06em] text-stone-600 hover:text-stone-100 mr-1" data-action="csv-template">CSV TEMPLATE ↓</button>
+        <button type="button" class="btn btn-ghost btn-sm" data-action="import-csv">Import CSV</button>
+        <button type="button" class="btn btn-ghost btn-sm" data-action="export-csv">Export CSV</button>
+        <button type="button" class="btn btn-primary btn-sm" data-action="add-tx">+ Add</button>`)}
+      <div class="reveal panel">
+        <div class="p-4 lg:p-5 line-b grid gap-2.5 grid-cols-2 md:grid-cols-[minmax(200px,1.6fr)_repeat(4,minmax(0,1fr))]">
+          <div class="col-span-2 md:col-span-1 relative"><svg class="absolute left-3 top-1/2 -translate-y-1/2 text-stone-600" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6" cy="6" r="4.5"/><path d="m9.5 9.5 3 3"/></svg><input class="input !h-[38px] !pl-9 !text-[13.5px]" type="search" placeholder="Search description, category, amount" data-filter="q" value="${esc(f.q)}" aria-label="Search transactions" /></div>
+          ${sel('type', [['all', 'All types'], ['income', 'Income'], ['expense', 'Expenses']], f.type)}
+          ${sel('cat', [['all', 'All categories'], ...[...new Set(allCats())].map((c) => [c, c])], f.cat)}
+          ${sel('acct', [['all', 'All accounts'], ...S.accounts.map((a) => [a.id, a.name])], f.acct)}
+          ${sel('month', [['all', 'All months'], ...months.map((m) => [m, fmtMonth(m, true)])], f.month)}
+        </div>
+        <div id="txTable"></div>
+      </div>`;
+    return { html, mount: renderTxTable };
+  }
+  const PAGE = 20;
+  function renderTxTable() {
+    const host = $('#txTable'); if (!host) return;
+    const list = filteredTx(), f = UI.tx;
+    const pages = Math.max(1, Math.ceil(list.length / PAGE)); f.page = Math.min(f.page, pages);
+    const rows = list.slice((f.page - 1) * PAGE, f.page * PAGE);
+    const inc = sum(list.filter((t) => t.type === 'income'), (t) => t.amount), exp = sum(list.filter((t) => t.type === 'expense'), (t) => t.amount);
+    const arrow = (k) => (f.sort === k ? (f.dir > 0 ? ' ↑' : ' ↓') : '');
+    const anyFilter = f.q || f.type !== 'all' || f.cat !== 'all' || f.acct !== 'all' || f.month !== 'all';
+    host.innerHTML = `
+      <div class="px-4 lg:px-5 py-3 line-b flex flex-wrap items-center justify-between gap-x-6 gap-y-1 text-[13px] text-stone-600">
+        <span><span class="text-stone-100">${list.length}</span> transaction${list.length === 1 ? '' : 's'}${anyFilter ? ' · <button type="button" class="underline underline-offset-2 hover:text-stone-100" data-action="tx-clear">clear filters</button>' : ''}</span>
+        <span class="font-mono text-[12px]">IN <span class="text-mint-500">${money(inc)}</span> · OUT <span class="text-stone-300">${money(exp)}</span> · NET <span class="text-stone-100">${money(inc - exp)}</span></span>
+      </div>
+      ${rows.length ? `<table class="tbl"><thead><tr>
+        <th class="th-sort !pl-4 lg:!pl-5" data-action="tx-sort" data-v="date">Date${arrow('date')}</th>
+        <th class="th-sort" data-action="tx-sort" data-v="desc">Description${arrow('desc')}</th>
+        <th class="hidden md:table-cell">Category</th><th class="hidden lg:table-cell">Account</th>
+        <th class="th-sort text-right" data-action="tx-sort" data-v="amount">Amount${arrow('amount')}</th><th class="!pr-4 lg:!pr-5 w-[1%]"><span class="sr-only">Actions</span></th></tr></thead>
+        <tbody>${rows.map((t) => `<tr>
+          <td class="!pl-4 lg:!pl-5 !pr-1 sm:!pr-3 font-mono text-[12px] text-stone-600 whitespace-nowrap w-[1%]">${fmtShort(t.date)}<span class="hidden sm:inline">, ${t.date.slice(0, 4)}</span></td>
+          <td class="max-w-0 w-full"><div class="text-stone-100 truncate">${esc(t.desc)}</div><div class="md:hidden text-[12px] text-stone-600 truncate">${esc(t.category)}</div>${t.note ? `<div class="hidden md:block text-[12px] text-stone-600 truncate">${esc(t.note)}</div>` : ''}</td>
+          <td class="hidden md:table-cell whitespace-nowrap"><span class="chip">${esc(t.category)}</span></td>
+          <td class="hidden lg:table-cell text-stone-600 whitespace-nowrap text-[13px]">${esc(acctName(t.account))}</td>
+          <td class="text-right font-mono text-[13px] whitespace-nowrap ${t.type === 'income' ? 'text-mint-500' : 'text-stone-300'}">${t.type === 'income' ? '+' : '−'}${money(t.amount)}</td>
+          <td class="!pr-2 sm:!pr-3 lg:!pr-4 !pl-1 sm:!pl-3 whitespace-nowrap text-right"><button type="button" class="icon-btn" data-action="edit-tx" data-id="${t.id}" aria-label="Edit ${esc(t.desc)}">${ICON.edit}</button><button type="button" class="icon-btn danger !hidden sm:!inline-flex" data-action="del-tx" data-id="${t.id}" aria-label="Delete ${esc(t.desc)}">${ICON.trash}</button></td>
+        </tr>`).join('')}</tbody></table>` : empty(S.transactions.length ? 'Nothing matches' : 'No transactions yet', S.transactions.length ? 'Try a different search or clear the filters.' : 'Add your first transaction or import a CSV from your bank.', S.transactions.length ? '<button type="button" class="btn btn-ghost" data-action="tx-clear">Clear filters</button>' : '<button type="button" class="btn btn-primary" data-action="add-tx">+ Add transaction</button>')}
+      ${pages > 1 ? `<div class="px-4 lg:px-5 py-3.5 line-t flex items-center justify-between font-mono text-[12px] text-stone-600">
+        <span>PAGE ${f.page} OF ${pages}</span>
+        <div class="flex gap-2"><button type="button" class="btn btn-ghost btn-sm" data-action="tx-page" data-v="${f.page - 1}" ${f.page <= 1 ? 'disabled style="opacity:.35;pointer-events:none"' : ''}>${ICON.left} Prev</button><button type="button" class="btn btn-ghost btn-sm" data-action="tx-page" data-v="${f.page + 1}" ${f.page >= pages ? 'disabled style="opacity:.35;pointer-events:none"' : ''}>Next ${ICON.right}</button></div></div>` : ''}`;
+  }
+
+  /* ---- Invoices ---- */
+  function viewInvoices() {
+    const open = openInvoices(), od = open.filter(isOverdue);
+    const paid30 = S.invoices.filter((i) => i.status === 'paid' && i.paidDate && i.paidDate >= addDays(TODAY, -30));
+    const drafts = S.invoices.filter((i) => i.status === 'draft');
+    const counts = { all: S.invoices.length, draft: drafts.length, sent: open.length - od.length, overdue: od.length, paid: S.invoices.filter((i) => i.status === 'paid').length };
+    const list = S.invoices.filter((i) => UI.inv === 'all' || invStatus(i) === UI.inv).sort((x, y) => (x.issue < y.issue ? 1 : -1));
+    const avgDays = (() => { const p = S.invoices.filter((i) => i.status === 'paid' && i.paidDate); return p.length ? sum(p, (i) => daysBetween(i.issue, i.paidDate)) / p.length : 0; })();
+    const html = `
+      ${pageHead('Invoices', 'Bill clients, track what is owed, and record payments. Marking an invoice paid adds the income to your books.', '<button type="button" class="btn btn-primary btn-sm" data-action="add-invoice">+ New invoice</button>')}
+      <div class="grid-lines grid-cols-2 xl:grid-cols-4 mb-6">
+        ${tile('Outstanding', sum(open, invoiceTotal), 'money0', `${open.length} invoice${open.length === 1 ? '' : 's'} sent and unpaid`, 0)}
+        ${tile('Overdue', sum(od, invoiceTotal), 'money0', od.length ? `<span class="text-coral-500">${od.length} past due date</span>` : 'Nothing overdue', 1)}
+        ${tile('Paid · last 30 days', sum(paid30, invoiceTotal), 'money0', `${paid30.length} payment${paid30.length === 1 ? '' : 's'} received`, 2)}
+        ${tile('Average days to pay', avgDays, 'int', 'From issue date to payment', 3)}
+      </div>
+      <div class="reveal panel">
+        <div class="px-4 lg:px-5 py-3.5 line-b flex flex-wrap items-center justify-between gap-3">
+          ${segHtml('inv-tab', [['all', `All ${counts.all}`], ['draft', `Draft ${counts.draft}`], ['sent', `Sent ${counts.sent}`], ['overdue', `Overdue ${counts.overdue}`], ['paid', `Paid ${counts.paid}`]], UI.inv)}
+        </div>
+        ${list.length ? `<div class="overflow-x-auto"><table class="tbl min-w-[820px]"><thead><tr><th class="!pl-4 lg:!pl-5">Number</th><th>Client</th><th>Issued</th><th>Due</th><th class="text-right">Amount</th><th>Status</th><th class="!pr-4 lg:!pr-5 text-right">Actions</th></tr></thead>
+        <tbody>${list.map((inv) => { const st = invStatus(inv); const late = st === 'overdue' ? daysBetween(inv.due, TODAY) : 0; return `<tr>
+          <td class="!pl-4 lg:!pl-5 font-mono text-[12.5px] text-stone-300 whitespace-nowrap">${esc(inv.number)}</td>
+          <td><div class="text-stone-100">${esc(inv.client)}</div><div class="text-[12px] text-stone-600">${esc(inv.items[0] ? inv.items[0].desc : '')}${inv.items.length > 1 ? ` +${inv.items.length - 1} more` : ''}</div></td>
+          <td class="font-mono text-[12px] text-stone-600 whitespace-nowrap">${fmtShort(inv.issue)}</td>
+          <td class="font-mono text-[12px] whitespace-nowrap ${st === 'overdue' ? 'text-coral-500' : 'text-stone-600'}">${fmtShort(inv.due)}${late ? ` · ${late}d late` : ''}${st === 'paid' && inv.paidDate ? `<div class="text-stone-700">paid ${fmtShort(inv.paidDate)}</div>` : ''}</td>
+          <td class="text-right font-mono text-[13px] text-stone-100 whitespace-nowrap">${money(invoiceTotal(inv))}</td>
+          <td>${statusHtml(st)}</td>
+          <td class="!pr-3 lg:!pr-4 text-right whitespace-nowrap">
+            ${st === 'draft' ? `<button type="button" class="btn btn-ghost btn-sm" data-action="inv-send" data-id="${inv.id}">Mark sent</button>` : ''}
+            ${st === 'sent' || st === 'overdue' ? `<button type="button" class="btn btn-ghost btn-sm" data-action="inv-paid" data-id="${inv.id}">Mark paid</button>` : ''}
+            ${st === 'overdue' ? `<button type="button" class="btn btn-danger btn-sm" data-action="inv-remind" data-id="${inv.id}">Remind</button>` : ''}
+            <button type="button" class="icon-btn" data-action="inv-view" data-id="${inv.id}" aria-label="View ${esc(inv.number)}">${ICON.eye}</button><button type="button" class="icon-btn" data-action="inv-edit" data-id="${inv.id}" aria-label="Edit ${esc(inv.number)}">${ICON.edit}</button><button type="button" class="icon-btn danger" data-action="inv-del" data-id="${inv.id}" aria-label="Delete ${esc(inv.number)}">${ICON.trash}</button>
+          </td></tr>`; }).join('')}</tbody></table></div>` : empty(S.invoices.length ? 'No invoices here' : 'No invoices yet', S.invoices.length ? 'Nothing has this status right now.' : 'Create your first invoice to start tracking what clients owe you.', '<button type="button" class="btn btn-primary" data-action="add-invoice">+ New invoice</button>')}
+      </div>`;
+    return { html };
+  }
+
+  /* ---- Budgets ---- */
+  function viewBudgets() {
+    const mk = UI.bMonth, isCur = mk === monthKey(TODAY);
+    const rows = budgetRows(mk);
+    const b = endOfMonth(mk), dim = parseD(b).getDate(), left = isCur ? dim - parseD(TODAY).getDate() : 0;
+    const totalLimit = sum(rows, (r) => r.limit), totalSpent = sum(rows, (r) => r.spent);
+    const t = totals(mk + '-01', b > TODAY ? TODAY : b);
+    const budgeted = new Set(S.budgets.map((x) => x.category));
+    const unb = groupSum(t.list.filter((x) => x.type === 'expense' && !budgeted.has(x.category)), 'category');
+    const canNext = mk < monthKey(TODAY);
+    const html = `
+      ${pageHead('Budgets', 'Monthly spending limits by category. The thin marker shows where each category is likely to land, based on your last three months and this month so far.', '<button type="button" class="btn btn-primary btn-sm" data-action="add-budget">+ Add budget</button>')}
+      <div class="reveal flex items-center gap-3 mb-6">
+        <button type="button" class="icon-btn border border-stone-900" data-action="b-month" data-v="-1" aria-label="Previous month">${ICON.left}</button>
+        <div class="serif text-[26px] min-w-[190px] text-center">${fmtMonth(mk, true)}</div>
+        <button type="button" class="icon-btn border border-stone-900 ${canNext ? '' : 'opacity-30 pointer-events-none'}" data-action="b-month" data-v="1" aria-label="Next month" ${canNext ? '' : 'disabled'}>${ICON.right}</button>
+        ${isCur ? '' : '<button type="button" class="ml-2 font-mono text-[11px] tracking-[.06em] text-stone-600 hover:text-stone-100" data-action="b-month" data-v="0">BACK TO THIS MONTH</button>'}
+      </div>
+      <div class="grid-lines grid-cols-2 xl:grid-cols-4 mb-6">
+        ${tile('Budgeted', totalLimit, 'money0', `${rows.length} categor${rows.length === 1 ? 'y' : 'ies'}`, 0)}
+        ${tile('Spent', totalSpent, 'money0', totalLimit ? `${((totalSpent / totalLimit) * 100).toFixed(0)}% of budget` : '', 1)}
+        ${tile('Remaining', totalLimit - totalSpent, 'money0', totalLimit - totalSpent < 0 ? '<span class="text-coral-500">Over budget overall</span>' : 'Left to spend', 2)}
+        ${tile(isCur ? 'Days left' : 'Month closed', isCur ? left : '—', 'int', isCur && left > 0 ? `About ${money0(Math.max(0, totalLimit - totalSpent) / left)} a day to stay on budget` : isCur ? 'Last day of the month' : 'Final figures', 3)}
+      </div>
+      ${rows.length ? `<div class="cells md:grid-cols-2 xl:grid-cols-3 mb-6">${rows.map((r, i) => {
+        const lbl = r.state === 'over' ? 'Over budget' : r.state === 'risk' ? 'At risk' : 'On track';
+        const col = r.state === 'over' ? 'text-coral-500' : r.state === 'risk' ? 'text-[#e0a050]' : 'text-mint-500';
+        const pacePct = Math.min(100, (r.projected / Math.max(1, r.limit)) * 100);
+        return `<div class="reveal p-5 lg:p-6" style="transition-delay:${(i % 3) * 60}ms">
+          <div class="flex items-start justify-between gap-3"><div><div class="text-[16px] text-stone-100">${esc(r.cat)}</div><div class="font-mono text-[11px] tracking-[.06em] mt-1 ${col}">${r.state === 'ok' ? '●' : '▲'} ${lbl.toUpperCase()}</div></div>
+          <div class="flex -mr-2"><button type="button" class="icon-btn" data-action="edit-budget" data-id="${r.id}" aria-label="Edit ${esc(r.cat)} budget">${ICON.edit}</button><button type="button" class="icon-btn danger" data-action="del-budget" data-id="${r.id}" aria-label="Delete ${esc(r.cat)} budget">${ICON.trash}</button></div></div>
+          <div class="mt-5 flex items-baseline gap-2"><span class="serif text-[32px] leading-none" data-count="${r.spent}" data-fmt="money0">${money0(r.spent)}</span><span class="text-stone-600 text-[14px]">of ${money0(r.limit)}</span></div>
+          <div class="relative mt-4"><div class="track ${r.state === 'ok' ? '' : r.state}" style="height:8px"><i style="width:${Math.min(100, r.pct * 100)}%"></i></div>${isCur && r.state !== 'over' && r.projected > 0 ? `<span class="absolute -top-1 h-4 w-px bg-stone-400" style="left:${pacePct}%" data-tip="Projected month end: ${esc(money0(r.projected))}"></span>` : ''}</div>
+          <div class="mt-3 flex justify-between text-[12.5px] text-stone-600"><span>${r.limit - r.spent >= 0 ? `${money0(r.limit - r.spent)} left` : `${money0(r.spent - r.limit)} over`}</span>${isCur ? `<span>Likely: ${money0(r.projected)}</span>` : `<span>${(r.pct * 100).toFixed(0)}% used</span>`}</div>
+        </div>`; }).join('')}</div>` : `<div class="panel mb-6">${empty('No budgets yet', 'Set a monthly limit for the categories you want to keep an eye on.', '<button type="button" class="btn btn-primary" data-action="add-budget">+ Add budget</button>')}</div>`}
+      <div class="reveal panel">
+        ${panelHead('Spending without a budget')}
+        <div class="px-5 lg:px-6 py-3">${unb.length ? unb.map((u) => `<div class="flex items-center justify-between gap-3 py-2.5 dash-b last:border-0"><span class="text-[14px] text-stone-300">${esc(u.k)}</span><span class="flex items-center gap-4"><span class="font-mono text-[13px] text-stone-300">${money(u.v)}</span><button type="button" class="btn btn-ghost btn-sm" data-action="add-budget" data-cat="${esc(u.k)}">Set budget</button></span></div>`).join('') : '<p class="text-stone-600 text-[14px] py-4">Every category you spent in this month has a budget.</p>'}</div>
+      </div>`;
+    return { html };
+  }
+
+  /* ---- Cash flow ---- */
+  function viewCashflow() {
+    const sc = UI.fc, fc = forecast(sc.days, sc), rw = runway();
+    const low = fc.min.v < S.settings.lowBalance;
+    const html = `
+      ${pageHead('Cash flow forecast', 'Projected balance from your recurring income and costs, open invoices on their due dates, and the next estimated tax payment.', segHtml('fc-days', [[30, '30 days'], [60, '60 days'], [90, '90 days']], sc.days))}
+      <div class="grid-lines grid-cols-2 xl:grid-cols-4 mb-6">
+        ${tile('Cash today', cashBalance(), 'money0', 'All accounts', 0)}
+        ${tile(`In ${sc.days} days`, fc.end, 'money0', deltaHtml(fc.end, cashBalance(), true, 'vs today'), 1)}
+        ${tile('Lowest point', fc.min.v, 'money0', `${fmtDate(fc.min.d)}${low ? ' · <span class="text-coral-500">below alert</span>' : ''}`, 2)}
+        ${tile('Runway', rw.months == null ? 'Cash positive' : rw.months, 'mo', rw.months == null ? `Income covered costs the last 3 months` : `Months of cash at ${money0(rw.netBurn)}/mo net burn`, 3)}
+      </div>
+      <div class="grid xl:grid-cols-[1fr_320px] gap-6 mb-6">
+        <div class="reveal panel">
+          ${panelHead('Projected balance', `<div class="legend"><span><i class="ln" style="background:#2fa866"></i>Balance</span><span><i class="ln" style="background:#f85156"></i>Alert ${money0(S.settings.lowBalance)}</span></div>`)}
+          <div class="p-5 lg:p-6"><div id="chFC" class="chart h-[300px]"></div></div>
+        </div>
+        <div class="reveal panel" style="transition-delay:80ms">
+          ${panelHead('What if', '<button type="button" class="font-mono text-[11px] tracking-[.06em] text-stone-600 hover:text-stone-100" data-action="fc-reset">RESET</button>')}
+          <div class="p-5 lg:p-6 space-y-6" id="fcSliders">
+            ${[['rev', 'Recurring income', -50, 50, '%'], ['exp', 'Recurring costs', -50, 50, '%'], ['delay', 'Invoices paid late by', 0, 60, ' days']].map(([k, l, mn, mx, u]) => `<label class="block"><div class="flex justify-between text-[13.5px] mb-2.5"><span class="text-stone-300">${l}</span><span class="font-mono text-[12px] text-stone-100" id="out-${k}">${k !== 'delay' && sc[k] > 0 ? '+' : ''}${sc[k]}${u}</span></div><input type="range" min="${mn}" max="${mx}" step="${k === 'delay' ? 5 : 5}" value="${sc[k]}" data-fc="${k}" data-unit="${u}" /></label>`).join('')}
+            <div class="line-t pt-5 grid grid-cols-2 gap-4 text-[13px]"><div><div class="label">Money in</div><div class="font-mono text-mint-500 mt-1" id="fcIn">${money0(fc.inflow)}</div></div><div><div class="label">Money out</div><div class="font-mono text-stone-300 mt-1" id="fcOut">${money0(fc.outflow)}</div></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="grid xl:grid-cols-2 gap-6 items-start">
+        <div class="reveal panel">
+          ${panelHead(`Scheduled · next ${sc.days} days`, `<span class="font-mono text-[11px] text-stone-600">${fc.ev.length} ITEMS</span>`)}
+          <div class="max-h-[440px] overflow-y-auto">${fc.ev.length ? `<table class="tbl"><tbody>${fc.ev.map((e) => `<tr><td class="!pl-5 lg:!pl-6 font-mono text-[12px] text-stone-600 whitespace-nowrap w-[1%]">${fmtShort(e.d)}</td><td><div class="text-stone-100 text-[14px]">${esc(e.name)}</div><div class="text-[12px] text-stone-600">${esc(e.kind)}</div></td><td class="!pr-5 lg:!pr-6 text-right font-mono text-[13px] whitespace-nowrap ${e.amount > 0 ? 'text-mint-500' : 'text-stone-300'}">${e.amount > 0 ? '+' : '−'}${money0(Math.abs(e.amount))}</td></tr>`).join('')}</tbody></table>` : empty('Nothing scheduled', 'Add recurring items to build a forecast.')}</div>
+        </div>
+        <div class="reveal panel" style="transition-delay:80ms">
+          ${panelHead('Recurring items', '<button type="button" class="btn btn-ghost btn-sm" data-action="add-rec">+ Add</button>')}
+          ${S.recurring.length ? `<div class="overflow-x-auto"><table class="tbl min-w-[520px]"><thead><tr><th class="!pl-5 lg:!pl-6">Name</th><th>Every</th><th>Next</th><th class="text-right">Amount</th><th class="w-[1%]"></th></tr></thead><tbody>${S.recurring.map((r) => `<tr><td class="!pl-5 lg:!pl-6"><div class="text-stone-100 text-[14px]">${esc(r.name)}</div><div class="text-[12px] text-stone-600">${esc(r.category)}</div></td><td class="text-stone-400 text-[13px] capitalize">${esc(r.freq)}</td><td class="font-mono text-[12px] text-stone-600 whitespace-nowrap">${fmtShort(occurrences(r, addDays(TODAY, 1), addDays(TODAY, 800))[0] || r.next)}</td><td class="text-right font-mono text-[13px] whitespace-nowrap ${r.type === 'income' ? 'text-mint-500' : 'text-stone-300'}">${r.type === 'income' ? '+' : '−'}${money0(r.amount)}</td><td class="!pr-4 whitespace-nowrap"><button type="button" class="icon-btn" data-action="edit-rec" data-id="${r.id}" aria-label="Edit ${esc(r.name)}">${ICON.edit}</button><button type="button" class="icon-btn danger" data-action="del-rec" data-id="${r.id}" aria-label="Delete ${esc(r.name)}">${ICON.trash}</button></td></tr>`).join('')}</tbody></table></div>` : empty('No recurring items', 'Add rent, payroll, subscriptions and retainers to project your balance.', '<button type="button" class="btn btn-primary" data-action="add-rec">+ Add recurring item</button>')}
+        </div>
+      </div>`;
+    return {
+      html, mount() {
+        chart($('#chFC'), drawForecast);
+        $$('#fcSliders [data-fc]').forEach((inp) => inp.addEventListener('input', () => {
+          const k = inp.dataset.fc; sc[k] = +inp.value;
+          $('#out-' + k).textContent = (k !== 'delay' && sc[k] > 0 ? '+' : '') + sc[k] + inp.dataset.unit;
+          const f2 = forecast(sc.days, sc); $('#fcIn').textContent = money0(f2.inflow); $('#fcOut').textContent = money0(f2.outflow);
+          const prevAnim = ANIM; ANIM = false; drawForecast($('#chFC')); ANIM = prevAnim;
+        }));
+        inp_changeRerender();
+      },
+    };
+  }
+  function inp_changeRerender() {
+    $$('#fcSliders [data-fc]').forEach((inp) => inp.addEventListener('change', () => refresh()));
+  }
+  function drawForecast(el) {
+    const fc = forecast(UI.fc.days, UI.fc);
+    const byDay = {}; fc.ev.forEach((e) => { (byDay[e.d] = byDay[e.d] || []).push(`${e.amount > 0 ? '+' : '−'}${money0(Math.abs(e.amount))} ${e.name}`); });
+    lineChart(el, { pts: fc.series.map((p) => ({ ...p, note: (byDay[p.d] || []).join(' · ') })), threshold: +S.settings.lowBalance, thresholdLabel: 'ALERT', title: 'Projected cash balance', name: 'Projected balance' });
+  }
+
+  /* ---- Reports ---- */
+  function viewReports() {
+    const [a, b, label] = rangeFor(UI.rep);
+    const t = totals(a, b);
+    const incRows = groupSum(t.list.filter((x) => x.type === 'income'), 'category');
+    const expRows = groupSum(t.list.filter((x) => x.type === 'expense'), 'category');
+    const months = monthsBetween(a, b);
+    const margin = t.inc ? (t.net / t.inc) * 100 : 0;
+    const clients = (() => { const m = new Map(); S.invoices.filter((i) => i.status === 'paid' && i.paidDate >= a && i.paidDate <= b).forEach((i) => m.set(i.client, (m.get(i.client) || 0) + invoiceTotal(i))); return [...m].sort((x, y) => y[1] - x[1]).slice(0, 6); })();
+    const pct = (v) => (t.inc ? ((v / t.inc) * 100).toFixed(1) + '%' : '—');
+    const html = `
+      ${pageHead('Reports', `Profit and loss for ${label.toLowerCase()}: ${fmtDate(a)} to ${fmtDate(b)}.`, `${segHtml('rep-range', [['quarter', 'This qtr'], ['lastq', 'Last qtr'], ['ytd', 'YTD'], ['12m', '12 mo'], ['lastyear', 'Last year']], UI.rep)}
+        <button type="button" class="btn btn-ghost btn-sm" data-action="rep-csv">Export CSV</button><button type="button" class="btn btn-ghost btn-sm" data-action="rep-print">Print</button>`)}
+      <div class="grid-lines grid-cols-2 xl:grid-cols-4 mb-6">
+        ${tile('Income', t.inc, 'money0', `${t.list.filter((x) => x.type === 'income').length} entries`, 0)}
+        ${tile('Expenses', t.exp, 'money0', `${t.list.filter((x) => x.type === 'expense').length} entries`, 1)}
+        ${tile('Net profit', t.net, 'money0', t.net < 0 ? '<span class="text-coral-500">Loss for the period</span>' : 'Income minus expenses', 2)}
+        ${tile('Profit margin', margin, 'pct', 'Net profit ÷ income', 3)}
+      </div>
+      ${t.list.length ? `
+      <div class="grid xl:grid-cols-[1.25fr_1fr] gap-6 mb-6 items-start">
+        <div class="reveal panel" id="pnl">
+          ${panelHead('Profit &amp; loss statement', `<span class="font-mono text-[11px] text-stone-600">${esc(fmtShort(a).toUpperCase())} – ${esc(fmtShort(b).toUpperCase())} ${b.slice(0, 4)}</span>`)}
+          <table class="tbl"><thead><tr><th class="!pl-5 lg:!pl-6">Account</th><th class="text-right">Amount</th><th class="!pr-5 lg:!pr-6 text-right">% of income</th></tr></thead>
+          <tbody>
+            <tr><td colspan="3" class="!pl-5 lg:!pl-6 label !text-stone-400 !pt-5">Income</td></tr>
+            ${incRows.map((r) => `<tr><td class="!pl-8 lg:!pl-10 text-stone-300">${esc(r.k)}</td><td class="text-right font-mono text-[13px]">${money(r.v)}</td><td class="!pr-5 lg:!pr-6 text-right font-mono text-[12px] text-stone-600">${pct(r.v)}</td></tr>`).join('')}
+            <tr><td class="!pl-5 lg:!pl-6 text-stone-100 font-medium">Total income</td><td class="text-right font-mono text-[13px] text-mint-500">${money(t.inc)}</td><td class="!pr-5 lg:!pr-6 text-right font-mono text-[12px] text-stone-600">100%</td></tr>
+            <tr><td colspan="3" class="!pl-5 lg:!pl-6 label !text-stone-400 !pt-6">Expenses</td></tr>
+            ${expRows.map((r) => `<tr><td class="!pl-8 lg:!pl-10 text-stone-300">${esc(r.k)}</td><td class="text-right font-mono text-[13px]">${money(r.v)}</td><td class="!pr-5 lg:!pr-6 text-right font-mono text-[12px] text-stone-600">${pct(r.v)}</td></tr>`).join('')}
+            <tr><td class="!pl-5 lg:!pl-6 text-stone-100 font-medium">Total expenses</td><td class="text-right font-mono text-[13px]">${money(t.exp)}</td><td class="!pr-5 lg:!pr-6 text-right font-mono text-[12px] text-stone-600">${pct(t.exp)}</td></tr>
+          </tbody>
+          <tfoot><tr><td class="!pl-5 lg:!pl-6 !pb-5 serif text-[22px]">Net profit</td><td class="!pb-5 text-right font-mono text-[15px] ${t.net >= 0 ? 'text-mint-500' : 'text-coral-500'}">${money(t.net)}</td><td class="!pr-5 lg:!pr-6 !pb-5 text-right font-mono text-[12px] text-stone-600">${margin.toFixed(1)}%</td></tr></tfoot></table>
+        </div>
+        <div class="flex flex-col gap-6">
+          <div class="reveal panel" style="transition-delay:80ms">
+            ${panelHead('Monthly income vs expenses', '<div class="legend"><span><i style="background:#2fa866"></i>In</span><span><i style="background:#8a6ce8"></i>Out</span></div>')}
+            <div class="p-5"><div id="chRep" class="chart h-[230px]"></div></div>
+          </div>
+          <div class="reveal panel" style="transition-delay:120ms">
+            ${panelHead('Net profit by month')}
+            <div class="p-5"><div id="chNet" class="chart h-[190px]"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="grid xl:grid-cols-2 gap-6 items-start">
+        <div class="reveal panel">${panelHead('Expense breakdown')}<div class="px-5 lg:px-6 py-3">${catBars(expRows, { limit: 8 })}</div></div>
+        <div class="reveal panel" style="transition-delay:80ms">${panelHead('Top clients · paid invoices')}
+          <div class="px-5 lg:px-6 py-2">${clients.length ? clients.map(([c, v], i) => `<div class="flex items-center justify-between gap-3 py-3 dash-b last:border-0"><span class="flex items-center gap-3"><span class="font-mono text-[11px] text-stone-700">${pad(i + 1)}</span><span class="text-[14px] text-stone-200">${esc(c)}</span></span><span class="font-mono text-[13px] text-stone-300">${money(v)}</span></div>`).join('') : '<p class="text-stone-600 text-[14px] py-4">No paid invoices in this period.</p>'}</div>
+        </div>
+      </div>` : `<div class="panel">${empty('No activity in this period', 'Pick a different range, or add transactions to see a report.', '<button type="button" class="btn btn-ghost" data-action="rep-range" data-v="12m">Show last 12 months</button>')}</div>`}`;
+    return {
+      html, mount() {
+        if (!t.list.length) return;
+        const data = months.map((k) => totals(k + '-01', endOfMonth(k) > b ? b : endOfMonth(k)));
+        chart($('#chRep'), (el) => barChart(el, { labels: months.map((k) => fmtMonth(k)), series: [{ name: 'Income', color: '#2fa866', values: data.map((d) => d.inc) }, { name: 'Expenses', color: '#8a6ce8', values: data.map((d) => d.exp) }], title: 'Monthly income and expenses' }));
+        chart($('#chNet'), (el) => lineChart(el, { pts: months.map((k, i) => ({ d: k + '-01', v: data[i].net })), color: '#c4832a', labelFmt: (d) => fmtMonth(d.slice(0, 7)), title: 'Net profit by month', name: 'Net profit', dots: true }));
+      },
+    };
+  }
+
+  /* ---- Taxes ---- */
+  function viewTaxes() {
+    const y = +TODAY.slice(0, 4);
+    const ps = taxPeriods(y);
+    const ytd = totals(`${y}-01-01`, TODAY);
+    const estYtd = Math.max(0, ytd.net) * S.settings.taxRate / 100;
+    const paid = sum(ps, (p) => p.paid);
+    const nx = nextTaxDue();
+    const monthAvg = (() => { const ms = lastNMonths(4).slice(0, 3); return sum(ms.map((k) => totals(k + '-01', endOfMonth(k)).net)) / 3; })();
+    const ded = groupSum(ytd.list.filter((x) => x.type === 'expense'), 'category');
+    const html = `
+      ${pageHead(`Estimated taxes · ${y}`, 'A planning estimate of quarterly payments, based on net profit and the set-aside rate you choose. It is not tax advice. Confirm the real figures with your accountant.', `<form data-form="tax-rate" class="flex items-center gap-2"><label for="taxRate" class="label">Set-aside rate</label><input id="taxRate" name="rate" type="number" min="0" max="60" step="0.5" value="${S.settings.taxRate}" class="input !h-[34px] !w-[80px] !text-[13px] font-mono" required /><span class="text-stone-600 text-[13px]">%</span><button class="btn btn-ghost btn-sm" type="submit">Update</button></form>`)}
+      <div class="grid-lines grid-cols-2 xl:grid-cols-4 mb-6">
+        ${tile('Net profit · YTD', ytd.net, 'money0', 'Jan 1 to today', 0)}
+        ${tile('Estimated tax · YTD', estYtd, 'money0', `${S.settings.taxRate}% of net profit`, 1)}
+        ${tile('Paid so far', paid, 'money0', `${money0(Math.max(0, estYtd - paid))} still to set aside`, 2)}
+        ${tile('Set aside each month', Math.max(0, monthAvg) * S.settings.taxRate / 100, 'money0', 'Based on your last 3 months', 3)}
+      </div>
+      ${nx ? `<div class="reveal panel mb-6 p-5 lg:p-6 flex flex-col md:flex-row md:items-center justify-between gap-5">
+        <div class="flex items-center gap-4"><span class="dot pulse !bg-mint-500 flex-none"></span><div><div class="label">Next payment · ${esc(nx.label)}</div><div class="serif text-[28px] mt-1">${money0(nx.owed)} due ${fmtDate(nx.due)}</div><div class="text-[13px] text-stone-600 mt-1">${daysBetween(TODAY, nx.due)} days from today${nx.partial ? ' · the quarter is still open, so this will grow' : ''}</div></div></div>
+        ${nx.owed > 0 ? `<button type="button" class="btn btn-primary" data-action="tax-paid" data-key="${nx.key}">Record payment</button>` : '<span class="status st-paid"><i></i>Covered</span>'}
+      </div>` : ''}
+      <div class="grid xl:grid-cols-[1.4fr_1fr] gap-6 items-start">
+        <div class="reveal panel">
+          ${panelHead('Quarterly schedule')}
+          <div class="overflow-x-auto"><table class="tbl min-w-[640px]"><thead><tr><th class="!pl-5 lg:!pl-6">Period</th><th>Due</th><th class="text-right">Net profit</th><th class="text-right">Estimate</th><th class="text-right">Paid</th><th class="!pr-5 lg:!pr-6 text-right">Status</th></tr></thead>
+          <tbody>${ps.map((p) => { const st = p.future ? 'draft' : p.owed <= 0.5 ? 'paid' : p.due < TODAY ? 'overdue' : 'sent'; const stl = p.future ? 'upcoming' : p.owed <= 0.5 ? (p.est ? 'paid' : 'nothing due') : p.due < TODAY ? 'past due' : 'open'; return `<tr>
+            <td class="!pl-5 lg:!pl-6"><div class="text-stone-100">${p.label}</div><div class="text-[12px] text-stone-600">${p.months}${p.partial ? ' · so far' : ''}</div></td>
+            <td class="font-mono text-[12px] text-stone-400 whitespace-nowrap">${fmtDate(p.due)}</td>
+            <td class="text-right font-mono text-[13px]">${p.future ? '—' : money0(p.net)}</td>
+            <td class="text-right font-mono text-[13px] text-stone-100">${p.future ? '—' : money0(p.est)}</td>
+            <td class="text-right font-mono text-[13px] text-stone-400">${p.paid ? money0(p.paid) : '—'}</td>
+            <td class="!pr-4 lg:!pr-5 text-right whitespace-nowrap"><span class="status st-${st} mr-2"><i></i>${stl}</span>${!p.future && p.owed > 0.5 ? `<button type="button" class="btn btn-ghost btn-sm" data-action="tax-paid" data-key="${p.key}">Record</button>` : p.paid ? `<button type="button" class="icon-btn" data-action="tax-clear" data-key="${p.key}" aria-label="Clear payment for ${p.label}" data-tip="Clear recorded payment">${ICON.trash}</button>` : ''}</td></tr>`; }).join('')}</tbody></table></div>
+          <p class="px-5 lg:px-6 py-4 line-t text-[12.5px] leading-[19px] text-stone-600">Periods and due dates follow the US federal estimated-tax calendar. When a due date falls on a weekend or holiday it moves to the next business day. State rules vary. Check the current IRS calendar each year.</p>
+        </div>
+        <div class="reveal panel" style="transition-delay:80ms">
+          ${panelHead('Expenses by category · YTD')}
+          <div class="px-5 lg:px-6 py-3">${catBars(ded, { limit: 10 })}</div>
+          <p class="px-5 lg:px-6 py-4 line-t text-[12.5px] leading-[19px] text-stone-600">Not every business expense is fully deductible. Business meals, for example, are often limited to 50%. Your accountant will know what applies to you.</p>
+        </div>
+      </div>`;
+    return { html };
+  }
+
+  /* ---- Settings ---- */
+  function viewSettings() {
+    const st = S.settings;
+    const inUse = (c) => S.transactions.filter((t) => t.category === c).length;
+    const catList = (type) => S.categories[type].map((c) => `<span class="chip">${esc(c)}<span class="font-mono text-[10.5px] text-stone-700">${inUse(c)}</span><button type="button" data-action="del-cat" data-type="${type}" data-name="${esc(c)}" aria-label="Remove ${esc(c)}">×</button></span>`).join('');
+    const html = `
+      ${pageHead('Settings', 'Your business details, accounts, categories, auto-categorize rules and data backups.')}
+      <div class="grid xl:grid-cols-2 gap-6">
+        <div class="reveal panel">
+          ${panelHead('Business profile')}
+          <form data-form="profile" class="p-5 lg:p-6 grid sm:grid-cols-2 gap-4">
+            <label class="field sm:col-span-2"><span class="label">Business name</span><input class="input" name="business" value="${esc(st.business)}" required maxlength="80" /></label>
+            <label class="field"><span class="label">Your name</span><input class="input" name="owner" value="${esc(st.owner)}" maxlength="60" /></label>
+            <label class="field"><span class="label">Email</span><input class="input" type="email" name="email" value="${esc(st.email)}" maxlength="120" /></label>
+            <label class="field"><span class="label">Currency</span><select class="input" name="currency">${CURRENCIES.map((c) => `<option ${c === st.currency ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
+            <label class="field"><span class="label">Tax set-aside %</span><input class="input" type="number" min="0" max="60" step="0.5" name="taxRate" value="${st.taxRate}" required /></label>
+            <label class="field sm:col-span-2"><span class="label">Low cash alert</span><input class="input" type="number" min="0" step="100" name="lowBalance" value="${st.lowBalance}" required /><span class="text-[12px] text-stone-600">The dashboard warns you when the forecast drops below this.</span></label>
+            <div class="sm:col-span-2"><button type="submit" class="btn btn-primary">Save profile</button></div>
+          </form>
+        </div>
+        <div class="reveal panel" style="transition-delay:80ms">
+          ${panelHead('Accounts', '<button type="button" class="btn btn-ghost btn-sm" data-action="add-account">+ Add</button>')}
+          <table class="tbl"><thead><tr><th class="!pl-5 lg:!pl-6">Name</th><th class="text-right">Opening</th><th class="text-right">Balance</th><th class="w-[1%]"></th></tr></thead><tbody>
+            ${S.accounts.map((a) => `<tr><td class="!pl-5 lg:!pl-6 text-stone-100">${esc(a.name)}</td><td class="text-right font-mono text-[13px] text-stone-600">${money0(+a.opening)}</td><td class="text-right font-mono text-[13px]">${money0(acctBalance(a.id))}</td><td class="!pr-4 whitespace-nowrap"><button type="button" class="icon-btn" data-action="edit-account" data-id="${a.id}" aria-label="Edit ${esc(a.name)}">${ICON.edit}</button><button type="button" class="icon-btn danger" data-action="del-account" data-id="${a.id}" aria-label="Delete ${esc(a.name)}">${ICON.trash}</button></td></tr>`).join('')}
+          </tbody><tfoot><tr><td class="!pl-5 lg:!pl-6 label !text-stone-400">Total</td><td></td><td class="text-right font-mono text-[13px] text-mint-500">${money0(cashBalance())}</td><td></td></tr></tfoot></table>
+        </div>
+        <div class="reveal panel">
+          ${panelHead('Categories')}
+          <div class="p-5 lg:p-6 space-y-5">
+            <div><div class="label mb-3">Income</div><div class="flex flex-wrap gap-2">${catList('income')}</div></div>
+            <div><div class="label mb-3">Expenses</div><div class="flex flex-wrap gap-2">${catList('expense')}</div></div>
+            <form data-form="add-cat" class="flex flex-wrap gap-2 pt-2"><select class="input !w-[130px]" name="type" aria-label="Category type"><option value="expense">Expense</option><option value="income">Income</option></select><input class="input flex-1 !min-w-[160px]" name="name" placeholder="New category name" required maxlength="40" aria-label="New category name" /><button type="submit" class="btn btn-ghost">Add</button></form>
+            <p class="text-[12px] text-stone-600">The small number shows how many transactions use each category. Categories in use can't be removed.</p>
+          </div>
+        </div>
+        <div class="reveal panel" style="transition-delay:80ms">
+          ${panelHead('Auto-categorize rules', '<button type="button" class="btn btn-ghost btn-sm" data-action="apply-rules">Apply to uncategorized</button>')}
+          <div class="p-5 lg:p-6">
+            <p class="text-[13.5px] text-stone-600 mb-4">When a description contains the text, the category is filled in automatically, on new entries and on CSV imports.</p>
+            <div class="space-y-2 mb-4">${S.rules.length ? S.rules.map((r) => `<div class="flex items-center justify-between gap-3 px-3 py-2.5 border border-stone-900 rounded-lg text-[13.5px]"><span class="text-stone-400">Contains <span class="font-mono text-stone-100">“${esc(r.match)}”</span> → <span class="text-stone-100">${esc(r.category)}</span></span><button type="button" class="icon-btn danger" data-action="del-rule" data-id="${r.id}" aria-label="Delete rule">${ICON.trash}</button></div>`).join('') : '<p class="text-stone-600 text-[14px]">No rules yet.</p>'}</div>
+            <form data-form="add-rule" class="flex flex-wrap gap-2"><input class="input flex-1 !min-w-[140px]" name="match" placeholder="Text to match, e.g. uber" required maxlength="40" aria-label="Text to match" /><select class="input !w-auto flex-1 !min-w-[150px]" name="category" aria-label="Category">${allCats().map((c) => `<option>${esc(c)}</option>`).join('')}</select><button type="submit" class="btn btn-ghost">Add rule</button></form>
+          </div>
+        </div>
+        <div class="reveal panel xl:col-span-2">
+          ${panelHead('Data &amp; backup')}
+          <div class="grid md:grid-cols-4 gap-px bg-stone-900">
+            ${[['Export backup', 'Download everything as a JSON file.', 'export-json', 'btn-ghost', 'Download'], ['Restore backup', 'Replace current data with a JSON backup.', 'import-json', 'btn-ghost', 'Choose file'], ['Reload sample', 'Bring back the sample design studio.', 'reset-sample', 'btn-ghost', 'Load sample'], ['Start fresh', 'Delete all entries and keep your categories.', 'clear-all', 'btn-danger', 'Clear data']].map(([t, d, a, c, l]) => `<div class="bg-stone-1100 p-5 lg:p-6 flex flex-col gap-4"><div><div class="text-[15px] text-stone-100">${t}</div><p class="text-[13px] text-stone-600 mt-1">${d}</p></div><button type="button" class="btn ${c} btn-sm self-start mt-auto" data-action="${a}">${l}</button></div>`).join('')}
+          </div>
+        </div>
+      </div>`;
+    return { html };
+  }
+
+  /* ================== FORMS ================== */
+  function txForm(tx) {
+    const isNew = !tx;
+    const t = tx ? { ...tx } : { type: 'expense', date: TODAY, desc: '', amount: '', category: '', account: (S.accounts[0] || {}).id, note: '' };
+    if (!S.accounts.length) { toast('Add an account in Settings first', 'err'); location.hash = '#settings'; return; }
+    const catOpts = (type, cur) => S.categories[type].map((c) => `<option ${c === cur ? 'selected' : ''}>${esc(c)}</option>`).join('');
+    openModal({
+      title: isNew ? 'New transaction' : 'Edit transaction', submitLabel: isNew ? 'Add transaction' : 'Save changes',
+      extra: isNew ? '' : `<button type="button" class="btn btn-danger mr-auto" data-action="del-tx" data-id="${t.id}">Delete</button>`,
+      body: `<div class="seg mb-5"><label><input type="radio" name="type" value="expense" ${t.type === 'expense' ? 'checked' : ''}>Expense</label><label><input type="radio" name="type" value="income" ${t.type === 'income' ? 'checked' : ''}>Income</label></div>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <label class="field sm:col-span-2"><span class="label">Description</span><input class="input" name="desc" value="${esc(t.desc)}" required maxlength="120" placeholder="e.g. Office supplies" autocomplete="off" /></label>
+          <label class="field"><span class="label">Amount</span><input class="input font-mono" name="amount" type="number" inputmode="decimal" min="0.01" step="0.01" value="${t.amount}" required placeholder="0.00" /></label>
+          <label class="field"><span class="label">Date</span><input class="input" name="date" type="date" value="${t.date}" required /></label>
+          <label class="field"><span class="label">Category</span><select class="input" name="category" id="txCat">${catOpts(t.type, t.category)}</select><span class="text-[12px] text-mint-500 h-4" id="txHint"></span></label>
+          <label class="field"><span class="label">Account</span><select class="input" name="account">${S.accounts.map((a) => `<option value="${a.id}" ${a.id === t.account ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></label>
+          <label class="field sm:col-span-2"><span class="label">Note (optional)</span><input class="input" name="note" value="${esc(t.note || '')}" maxlength="200" /></label>
+        </div>`,
+      onOpen(form) {
+        let touched = !isNew;
+        const cat = $('#txCat', form);
+        cat.addEventListener('change', () => { touched = true; $('#txHint', form).textContent = ''; });
+        const curType = () => form.querySelector('input[name=type]:checked').value;
+        $$('input[name=type]', form).forEach((r) => r.addEventListener('change', () => { cat.innerHTML = catOpts(curType(), ''); touched = false; apply(); }));
+        const apply = () => { if (touched) return; const s = suggestCategory(form.desc.value, curType()); if (s) { cat.value = s; $('#txHint', form).textContent = 'Category set by a rule'; } else $('#txHint', form).textContent = ''; };
+        form.desc.addEventListener('input', apply);
+      },
+      onSubmit(fd) {
+        const amount = round2(parseFloat(fd.amount));
+        if (!(amount > 0)) { toast('Enter an amount above zero', 'err'); return false; }
+        const rec = { id: t.id || uid(), type: fd.type, date: fd.date, desc: fd.desc.trim(), amount, category: fd.category, account: fd.account, note: (fd.note || '').trim() };
+        if (isNew) S.transactions.push(rec); else S.transactions[S.transactions.findIndex((x) => x.id === t.id)] = rec;
+        save(); refresh(); toast(isNew ? `Added ${rec.type} of ${money(amount)}` : 'Transaction updated');
+      },
+    });
+  }
+
+  function invoiceForm(inv) {
+    const isNew = !inv;
+    const base = inv ? JSON.parse(JSON.stringify(inv)) : { id: uid(), number: nextInvNumber(), client: '', email: '', issue: TODAY, due: addDays(TODAY, 30), items: [{ desc: '', qty: 1, rate: '' }], taxPct: 0, notes: 'Thank you for your business. Payment is due within 30 days.', status: 'draft', paidDate: null };
+    const clients = [...new Set(S.invoices.map((i) => i.client))];
+    openModal({
+      title: isNew ? 'New invoice' : `Edit ${base.number}`, wide: true, submitLabel: isNew ? 'Create invoice' : 'Save changes',
+      body: `<datalist id="clientList">${clients.map((c) => `<option value="${esc(c)}">`).join('')}</datalist>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <label class="field"><span class="label">Client</span><input class="input" name="client" list="clientList" value="${esc(base.client)}" required maxlength="80" autocomplete="off" /></label>
+          <label class="field"><span class="label">Client email</span><input class="input" name="email" type="email" value="${esc(base.email)}" maxlength="120" /></label>
+          <label class="field"><span class="label">Invoice number</span><input class="input font-mono" name="number" value="${esc(base.number)}" required maxlength="20" /></label>
+          <label class="field"><span class="label">Issue date</span><input class="input" type="date" name="issue" value="${base.issue}" required /></label>
+          <label class="field"><span class="label">Due date</span><input class="input" type="date" name="due" value="${base.due}" required /></label>
+          <label class="field"><span class="label">Sales tax %</span><input class="input font-mono" type="number" min="0" max="30" step="0.01" name="taxPct" value="${base.taxPct}" /></label>
+        </div>
+        <div class="mt-7"><div class="hidden sm:grid grid-cols-[1fr_70px_110px_30px] gap-2 mb-2 label"><span>Item</span><span>Qty</span><span>Rate</span><span></span></div><div id="items" class="space-y-2"></div>
+        <button type="button" class="btn btn-ghost btn-sm mt-3" id="addItem">+ Add line</button></div>
+        <div class="mt-7 grid sm:grid-cols-[1fr_260px] gap-6 items-start">
+          <label class="field"><span class="label">Notes</span><textarea class="input" name="notes" rows="3" maxlength="500">${esc(base.notes)}</textarea></label>
+          <div id="invTotals" class="border border-stone-900 rounded-lg p-4 text-[14px] space-y-2"></div>
+        </div>`,
+      onOpen(form) {
+        const host = $('#items', form);
+        const upd = () => {
+          const items = $$('.item-row', form).map((r) => ({ qty: +r.querySelector('[data-k=qty]').value || 0, rate: +r.querySelector('[data-k=rate]').value || 0 }));
+          const sub = sum(items, (i) => i.qty * i.rate), tax = sub * (+form.taxPct.value || 0) / 100;
+          $('#invTotals', form).innerHTML = `<div class="flex justify-between text-stone-400"><span>Subtotal</span><span class="font-mono">${money(sub)}</span></div><div class="flex justify-between text-stone-400"><span>Tax</span><span class="font-mono">${money(tax)}</span></div><div class="flex justify-between pt-2 line-t text-stone-100"><span>Total</span><span class="font-mono text-[16px]">${money(sub + tax)}</span></div>`;
+        };
+        const addRow = (it) => {
+          const row = document.createElement('div');
+          row.className = 'item-row grid grid-cols-[1fr_58px_86px_30px] sm:grid-cols-[1fr_70px_110px_30px] gap-2 items-center';
+          row.innerHTML = `<input class="input" data-k="desc" value="${esc(it.desc)}" placeholder="Description" maxlength="120" aria-label="Item description" /><input class="input font-mono !px-2" data-k="qty" type="number" min="0" step="0.25" value="${it.qty}" aria-label="Quantity" /><input class="input font-mono !px-2" data-k="rate" type="number" min="0" step="0.01" value="${it.rate}" placeholder="0.00" aria-label="Rate" /><button type="button" class="icon-btn danger" aria-label="Remove line">${ICON.trash}</button>`;
+          row.querySelector('button').addEventListener('click', () => { if ($$('.item-row', form).length > 1) { row.remove(); upd(); } else toast('An invoice needs at least one line', 'err'); });
+          host.appendChild(row);
+        };
+        base.items.forEach(addRow);
+        $('#addItem', form).addEventListener('click', () => { addRow({ desc: '', qty: 1, rate: '' }); upd(); host.lastElementChild.querySelector('input').focus(); });
+        form.addEventListener('input', upd); upd();
+        form.issue.addEventListener('change', () => { if (isNew && form.issue.value) form.due.value = addDays(form.issue.value, 30); });
+      },
+      onSubmit(fd, form) {
+        const items = $$('.item-row', form).map((r) => ({ desc: r.querySelector('[data-k=desc]').value.trim(), qty: +r.querySelector('[data-k=qty]').value || 0, rate: +r.querySelector('[data-k=rate]').value || 0 })).filter((i) => i.desc || i.rate);
+        if (!items.length || !items.some((i) => i.qty * i.rate > 0)) { toast('Add at least one line with a quantity and rate', 'err'); return false; }
+        if (items.some((i) => !i.desc)) { toast('Every line needs a description', 'err'); return false; }
+        const num = fd.number.trim();
+        if (S.invoices.some((i) => i.number === num && i.id !== base.id)) { toast(`${num} is already used`, 'err'); return false; }
+        if (fd.due < fd.issue) { toast('The due date is before the issue date', 'err'); return false; }
+        const rec = { ...base, client: fd.client.trim(), email: fd.email.trim(), number: num, issue: fd.issue, due: fd.due, taxPct: +fd.taxPct || 0, notes: fd.notes.trim(), items };
+        if (isNew) S.invoices.push(rec); else S.invoices[S.invoices.findIndex((i) => i.id === base.id)] = rec;
+        save(); if (location.hash !== '#invoices') location.hash = '#invoices'; else refresh();
+        toast(isNew ? `${num} created as a draft` : `${num} updated`);
+      },
+    });
+  }
+
+  function invoiceDoc(inv) {
+    const sub = invoiceSubtotal(inv), tax = sub * (+inv.taxPct || 0) / 100, st = invStatus(inv);
+    return `<div class="paper">
+      <div class="flex flex-wrap justify-between gap-6">
+        <div><div class="serif text-[30px] leading-none" style="color:#1a1918">${esc(S.settings.business)}</div><div class="muted mt-2 text-[13px]">${esc(S.settings.owner)}${S.settings.email ? ' · ' + esc(S.settings.email) : ''}</div></div>
+        <div class="text-right"><div class="font-mono text-[12px] tracking-[.1em] muted">INVOICE</div><div class="font-mono text-[18px] mt-1">${esc(inv.number)}</div><div class="font-mono text-[11px] tracking-[.08em] mt-2 uppercase" style="color:${st === 'paid' ? '#1f8a50' : st === 'overdue' ? '#c4383c' : '#625d58'}">${st}</div></div>
+      </div>
+      <div class="grid grid-cols-3 gap-4 mt-9 text-[13px]">
+        <div><div class="font-mono text-[10.5px] tracking-[.08em] muted">BILL TO</div><div class="mt-1.5 font-medium">${esc(inv.client)}</div><div class="muted">${esc(inv.email)}</div></div>
+        <div><div class="font-mono text-[10.5px] tracking-[.08em] muted">ISSUED</div><div class="mt-1.5">${fmtDate(inv.issue)}</div></div>
+        <div><div class="font-mono text-[10.5px] tracking-[.08em] muted">DUE</div><div class="mt-1.5">${fmtDate(inv.due)}</div></div>
+      </div>
+      <table class="mt-9"><thead><tr><th>Description</th><th style="text-align:right">Qty</th><th style="text-align:right">Rate</th><th style="text-align:right">Amount</th></tr></thead>
+      <tbody>${inv.items.map((i) => `<tr><td>${esc(i.desc)}</td><td style="text-align:right" class="font-mono">${i.qty}</td><td style="text-align:right" class="font-mono">${money(i.rate)}</td><td style="text-align:right" class="font-mono">${money(i.qty * i.rate)}</td></tr>`).join('')}</tbody></table>
+      <div class="flex justify-end mt-5"><div class="w-[240px] space-y-1.5 text-[13.5px]"><div class="flex justify-between muted"><span>Subtotal</span><span class="font-mono">${money(sub)}</span></div><div class="flex justify-between muted"><span>Tax (${+inv.taxPct || 0}%)</span><span class="font-mono">${money(tax)}</span></div><div class="flex justify-between pt-2 mt-1 text-[16px]" style="border-top:1px solid #d4cfc6"><span>Total</span><span class="font-mono">${money(sub + tax)}</span></div></div></div>
+      ${inv.notes ? `<div class="mt-9 pt-5 text-[13px] muted" style="border-top:1px dashed #d4cfc6">${esc(inv.notes)}</div>` : ''}
+    </div>`;
+  }
+
+  function recForm(r) {
+    const isNew = !r;
+    const x = r ? { ...r } : { name: '', type: 'expense', amount: '', category: S.categories.expense[0], freq: 'monthly', next: addDays(TODAY, 1) };
+    const catOpts = (type, cur) => S.categories[type].map((c) => `<option ${c === cur ? 'selected' : ''}>${esc(c)}</option>`).join('');
+    openModal({
+      title: isNew ? 'New recurring item' : 'Edit recurring item', submitLabel: isNew ? 'Add item' : 'Save changes',
+      body: `<div class="seg mb-5"><label><input type="radio" name="type" value="expense" ${x.type === 'expense' ? 'checked' : ''}>Cost</label><label><input type="radio" name="type" value="income" ${x.type === 'income' ? 'checked' : ''}>Income</label></div>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <label class="field sm:col-span-2"><span class="label">Name</span><input class="input" name="name" value="${esc(x.name)}" required maxlength="80" placeholder="e.g. Studio rent" /></label>
+          <label class="field"><span class="label">Amount</span><input class="input font-mono" type="number" min="0.01" step="0.01" name="amount" value="${x.amount}" required /></label>
+          <label class="field"><span class="label">Repeats</span><select class="input" name="freq">${['weekly', 'biweekly', 'monthly', 'quarterly', 'yearly'].map((f) => `<option value="${f}" ${f === x.freq ? 'selected' : ''}>${f[0].toUpperCase() + f.slice(1)}</option>`).join('')}</select></label>
+          <label class="field"><span class="label">Next date</span><input class="input" type="date" name="next" value="${x.next}" required /></label>
+          <label class="field"><span class="label">Category</span><select class="input" name="category" id="recCat">${catOpts(x.type, x.category)}</select></label>
+        </div>`,
+      onOpen(form) { $$('input[name=type]', form).forEach((el) => el.addEventListener('change', () => { $('#recCat', form).innerHTML = catOpts(el.value, ''); })); },
+      onSubmit(fd) {
+        const amount = round2(parseFloat(fd.amount)); if (!(amount > 0)) { toast('Enter an amount above zero', 'err'); return false; }
+        const rec = { id: x.id || uid(), name: fd.name.trim(), type: fd.type, amount, category: fd.category, freq: fd.freq, next: fd.next };
+        if (isNew) S.recurring.push(rec); else S.recurring[S.recurring.findIndex((i) => i.id === x.id)] = rec;
+        save(); refresh(); toast(isNew ? 'Recurring item added' : 'Recurring item updated');
+      },
+    });
+  }
+
+  function budgetForm(b, presetCat) {
+    const isNew = !b;
+    const used = new Set(S.budgets.map((x) => x.category));
+    const avail = isNew ? S.categories.expense.filter((c) => !used.has(c)) : [b.category];
+    if (!avail.length) { toast('Every expense category already has a budget', 'err'); return; }
+    const avg = (c) => { const ms = lastNMonths(4).slice(0, 3); return sum(ms.map((k) => sum(totals(k + '-01', endOfMonth(k)).list.filter((t) => t.type === 'expense' && t.category === c), (t) => t.amount))) / 3; };
+    const startCat = presetCat && avail.includes(presetCat) ? presetCat : avail[0];
+    openModal({
+      title: isNew ? 'New budget' : `Edit ${b.category} budget`, submitLabel: isNew ? 'Add budget' : 'Save',
+      body: `<div class="grid sm:grid-cols-2 gap-4">
+        <label class="field"><span class="label">Category</span><select class="input" name="category" ${isNew ? '' : 'disabled'} id="bCat">${avail.map((c) => `<option ${c === startCat ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>
+        <label class="field"><span class="label">Monthly limit</span><input class="input font-mono" type="number" min="1" step="1" name="limit" value="${b ? b.limit : ''}" required /></label>
+        <p class="sm:col-span-2 text-[13px] text-stone-600" id="bAvg"></p></div>`,
+      onOpen(form) { const sh = () => { const c = isNew ? form.category.value : b.category; $('#bAvg', form).textContent = `You've averaged ${money0(avg(c))} a month on ${c} over the last 3 months.`; }; if (isNew) form.category.addEventListener('change', sh); sh(); },
+      onSubmit(fd) {
+        const limit = Math.round(+fd.limit); if (!(limit > 0)) { toast('Enter a limit above zero', 'err'); return false; }
+        if (isNew) S.budgets.push({ id: uid(), category: fd.category, limit }); else b.limit = limit;
+        save(); refresh(); toast(isNew ? `Budget set for ${fd.category}` : 'Budget updated');
+      },
+    });
+  }
+
+  /* ---------------- CSV import ---------------- */
+  function parseCSV(text) {
+    const rows = []; let row = [], f = '', q = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+      else if (c === '"') q = true;
+      else if (c === ',') { row.push(f); f = ''; }
+      else if (c === '\n') { row.push(f); rows.push(row); row = []; f = ''; }
+      else if (c !== '\r') f += c;
+    }
+    if (f !== '' || row.length) { row.push(f); rows.push(row); }
+    return rows.filter((r) => r.some((x) => x.trim() !== ''));
+  }
+  function parseDateLoose(s) {
+    s = (s || '').trim();
+    let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if (m) return `${m[1]}-${pad(m[2])}-${pad(m[3])}`;
+    m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/); if (m) { const y = m[3].length === 2 ? '20' + m[3] : m[3]; return `${y}-${pad(m[1])}-${pad(m[2])}`; }
+    const d = new Date(s); return isNaN(d) ? null : iso(d);
+  }
+  const parseAmt = (s) => { s = String(s || '').trim(); if (!s) return NaN; const neg = /^\(.*\)$/.test(s) || /^-/.test(s.replace(/[^\d\-().]/g, '')); const n = parseFloat(s.replace(/[^\d.]/g, '')); return neg ? -n : n; };
+  function importCSV(text) {
+    const rows = parseCSV(text);
+    if (rows.length < 2) { toast('That file has no data rows', 'err'); return; }
+    const h = rows[0].map((x) => x.trim().toLowerCase());
+    const col = (...names) => h.findIndex((x) => names.some((n) => x === n || x.includes(n)));
+    const iD = col('date'), iDesc = col('description', 'desc', 'memo', 'payee', 'name', 'details'), iAmt = col('amount'), iType = col('type'), iCat = col('category'), iDeb = col('debit', 'withdrawal'), iCred = col('credit', 'deposit');
+    if (iD < 0 || iDesc < 0 || (iAmt < 0 && iDeb < 0 && iCred < 0)) { toast('Needs Date, Description and Amount columns. Download the template.', 'err'); return; }
+    const acct = S.accounts[0].id; const out = []; let skipped = 0, dupes = 0;
+    const exists = new Set(S.transactions.map((t) => `${t.date}|${t.desc.toLowerCase()}|${t.amount}`));
+    rows.slice(1).forEach((r) => {
+      const date = parseDateLoose(r[iD]); const desc = (r[iDesc] || '').trim();
+      let amt = iAmt >= 0 ? parseAmt(r[iAmt]) : NaN;
+      if (isNaN(amt)) { const dbt = iDeb >= 0 ? parseAmt(r[iDeb]) : NaN, cr = iCred >= 0 ? parseAmt(r[iCred]) : NaN; if (!isNaN(cr) && cr) amt = Math.abs(cr); else if (!isNaN(dbt) && dbt) amt = -Math.abs(dbt); }
+      if (!date || !desc || isNaN(amt) || amt === 0) { skipped++; return; }
+      let type = amt < 0 ? 'expense' : 'income';
+      if (iType >= 0) { const tv = (r[iType] || '').toLowerCase(); if (/exp|debit|out/.test(tv)) type = 'expense'; else if (/inc|credit|in/.test(tv)) type = 'income'; }
+      const amount = round2(Math.abs(amt));
+      const k = `${date}|${desc.toLowerCase()}|${amount}`; if (exists.has(k)) { dupes++; return; } exists.add(k);
+      let category = iCat >= 0 && S.categories[type].find((c) => c.toLowerCase() === (r[iCat] || '').trim().toLowerCase());
+      category = category || suggestCategory(desc, type) || (type === 'income' ? 'Other income' : 'Other expense');
+      if (!S.categories[type].includes(category)) S.categories[type].push(category);
+      out.push({ id: uid(), date, desc: desc.slice(0, 120), amount, type, category, account: acct, note: 'Imported' });
+    });
+    if (!out.length) { toast(`Nothing to import (${skipped} unreadable, ${dupes} duplicates)`, 'err'); return; }
+    openModal({
+      title: 'Import transactions', submitLabel: `Import ${out.length}`, wide: true,
+      body: `<p class="text-[15px] text-stone-300">Found <b class="text-stone-100">${out.length}</b> new transaction${out.length === 1 ? '' : 's'}: ${out.filter((t) => t.type === 'income').length} income and ${out.filter((t) => t.type === 'expense').length} expense, into <b class="text-stone-100">${esc(S.accounts[0].name)}</b>.${skipped ? ` ${skipped} row${skipped === 1 ? ' was' : 's were'} unreadable.` : ''}${dupes ? ` ${dupes} duplicate${dupes === 1 ? '' : 's'} skipped.` : ''}</p>
+        <div class="mt-5 border border-stone-900 rounded-lg overflow-x-auto"><table class="tbl min-w-[520px]"><thead><tr><th>Date</th><th>Description</th><th>Category</th><th class="text-right">Amount</th></tr></thead><tbody>${out.slice(0, 6).map((t) => `<tr><td class="font-mono text-[12px] text-stone-600">${fmtShort(t.date)}</td><td>${esc(t.desc)}</td><td><span class="chip">${esc(t.category)}</span></td><td class="text-right font-mono text-[13px] ${t.type === 'income' ? 'text-mint-500' : ''}">${t.type === 'income' ? '+' : '−'}${money(t.amount)}</td></tr>`).join('')}</tbody></table></div>
+        ${out.length > 6 ? `<p class="mt-3 text-[13px] text-stone-600">and ${out.length - 6} more.</p>` : ''}`,
+      onSubmit() { S.transactions.push(...out); save(); UI.tx.page = 1; if (location.hash !== '#transactions') location.hash = '#transactions'; else refresh(); toast(`Imported ${out.length} transactions`); },
+    });
+  }
+
+  /* ================== ACTIONS ================== */
+  const byId = (arr, id) => arr.find((x) => x.id === id);
+  const ACTIONS = {
+    'modal-close': () => closeModal(),
+    'menu-open': () => { document.body.classList.add('menu-open'); $('#scrim').hidden = false; },
+    'menu-close': () => closeMenu(),
+    'scroll-to': (d) => { const el = document.getElementById(d.target); if (el) el.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' }); },
+    'start-fresh': () => confirmBox('Start fresh?', 'This deletes the sample transactions, invoices, budgets and recurring items. Categories and rules are kept. You can reload the sample any time from Settings.', 'Clear and start', () => { S = blank(); save(); location.hash = '#settings'; toast('Cleared. Add your accounts to begin.'); }),
+    'dash-range': (d) => { UI.dash = d.v; refresh(true); },
+    'add-tx': () => txForm(),
+    'edit-tx': (d) => txForm(byId(S.transactions, d.id)),
+    'del-tx': (d) => { const t = byId(S.transactions, d.id); if (!t) return; confirmBox('Delete transaction?', `“${esc(t.desc)}” for ${money(t.amount)} on ${fmtDate(t.date)} will be removed.`, 'Delete', () => { S.transactions = S.transactions.filter((x) => x.id !== t.id); save(); refresh(); toast('Transaction deleted'); }); },
+    'tx-sort': (d) => { const f = UI.tx; if (f.sort === d.v) f.dir *= -1; else { f.sort = d.v; f.dir = d.v === 'desc' ? 1 : -1; } renderTxTable(); },
+    'tx-page': (d) => { UI.tx.page = +d.v; renderTxTable(); $('#view').scrollIntoView({ block: 'start' }); },
+    'tx-clear': () => { Object.assign(UI.tx, { q: '', type: 'all', cat: 'all', acct: 'all', month: 'all', page: 1 }); refresh(); },
+    'import-csv': () => { if (!S.accounts.length) { toast('Add an account in Settings first', 'err'); return; } const f = $('#csvFile'); f.value = ''; f.click(); },
+    'export-csv': () => {
+      const list = filteredTx();
+      if (!list.length) { toast('Nothing to export', 'err'); return; }
+      const lines = [['Date', 'Description', 'Type', 'Category', 'Account', 'Amount', 'Note'].join(',')].concat(list.map((t) => [t.date, t.desc, t.type, t.category, acctName(t.account), signed(t).toFixed(2), t.note || ''].map(csvCell).join(',')));
+      download(`ledgerline-transactions-${TODAY}.csv`, lines.join('\n'), 'text/csv'); toast(`Exported ${list.length} transactions`);
+    },
+    'csv-template': () => download('ledgerline-import-template.csv', 'Date,Description,Amount,Category\n2026-01-05,Client payment,2500.00,Client projects\n2026-01-06,Office supplies,-48.20,Supplies\n', 'text/csv'),
+    'add-invoice': () => invoiceForm(),
+    'inv-edit': (d) => invoiceForm(byId(S.invoices, d.id)),
+    'inv-tab': (d) => { UI.inv = d.v; refresh(); },
+    'inv-send': (d) => { const i = byId(S.invoices, d.id); if (!i) return; i.status = 'sent'; save(); refresh(); toast(`${i.number} marked as sent`); },
+    'inv-paid': (d) => {
+      const i = byId(S.invoices, d.id); if (!i) return;
+      openModal({
+        title: `Record payment · ${i.number}`, submitLabel: 'Record payment',
+        body: `<p class="text-[15px] text-stone-300 mb-5">${esc(i.client)} paid <b class="text-stone-100">${money(invoiceTotal(i))}</b>. This marks the invoice paid and adds the income to your transactions.</p>
+          <div class="grid sm:grid-cols-2 gap-4"><label class="field"><span class="label">Date received</span><input class="input" type="date" name="date" value="${TODAY}" required /></label>
+          <label class="field"><span class="label">Deposited to</span><select class="input" name="account">${S.accounts.map((a) => `<option value="${a.id}">${esc(a.name)}</option>`).join('')}</select></label>
+          <label class="field sm:col-span-2"><span class="label">Category</span><select class="input" name="category">${S.categories.income.map((c) => `<option>${esc(c)}</option>`).join('')}</select></label></div>`,
+        onSubmit(fd) {
+          if (!S.accounts.length) { toast('Add an account first', 'err'); return false; }
+          i.status = 'paid'; i.paidDate = fd.date;
+          S.transactions.push({ id: uid(), date: fd.date, desc: `Invoice ${i.number} · ${i.client}`, amount: invoiceTotal(i), type: 'income', category: fd.category, account: fd.account, note: 'Recorded from invoice' });
+          save(); refresh(); toast(`${i.number} paid · ${money(invoiceTotal(i))} added to income`);
+        },
+      });
+    },
+    'inv-view': (d) => {
+      const i = byId(S.invoices, d.id); if (!i) return;
+      openModal({ title: i.number, wide: true, body: invoiceDoc(i), footer: `<button type="button" class="btn btn-ghost" data-action="modal-close">Close</button><button type="button" class="btn btn-ghost" data-action="inv-edit-from-view" data-id="${i.id}">Edit</button><button type="button" class="btn btn-primary" data-action="inv-print" data-id="${i.id}">Print / save PDF</button>` });
+    },
+    'inv-edit-from-view': (d) => { closeModal(); invoiceForm(byId(S.invoices, d.id)); },
+    'inv-print': (d) => { const i = byId(S.invoices, d.id); if (!i) return; $('#printArea').innerHTML = invoiceDoc(i); window.print(); },
+    'inv-remind': (d) => {
+      const i = byId(S.invoices, d.id); if (!i) return;
+      const late = daysBetween(i.due, TODAY);
+      const subject = `Reminder: invoice ${i.number} (${money(invoiceTotal(i))}) was due ${fmtDate(i.due)}`;
+      const body = `Hi ${i.client} team,\n\nI hope all is well. This is a friendly reminder that invoice ${i.number} for ${money(invoiceTotal(i))} was due on ${fmtDate(i.due)}, ${late} day${late === 1 ? '' : 's'} ago.\n\nIf it has already been sent, thank you, and please ignore this note. If not, could you let me know when we can expect payment?\n\nThanks,\n${S.settings.owner || ''}\n${S.settings.business}`;
+      openModal({
+        title: `Reminder · ${i.number}`, wide: true,
+        body: `<div class="label mb-2">Subject</div><input class="input mb-5" id="remSubj" value="${esc(subject)}" readonly /><div class="label mb-2">Message</div><textarea class="input font-sans" id="remBody" rows="11">${esc(body)}</textarea><p class="text-[12.5px] text-stone-600 mt-3">Nothing is sent from here. Copy the text, or open it in your own email app and send it yourself.</p>`,
+        footer: `<button type="button" class="btn btn-ghost" data-action="modal-close">Close</button><button type="button" class="btn btn-ghost" data-action="copy-reminder">Copy text</button><a class="btn btn-primary" id="remMail" href="mailto:${encodeURIComponent(i.email || '')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}">Open in email app</a>`,
+        onOpen(form) { $('#remBody', form).addEventListener('input', (e) => { $('#remMail').href = `mailto:${encodeURIComponent(i.email || '')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(e.target.value)}`; }); },
+      });
+    },
+    'copy-reminder': async () => {
+      const text = `${$('#remSubj').value}\n\n${$('#remBody').value}`;
+      try { await navigator.clipboard.writeText(text); toast('Reminder copied'); } catch (e) { $('#remBody').select(); document.execCommand && document.execCommand('copy'); toast('Reminder copied'); }
+    },
+    'inv-del': (d) => { const i = byId(S.invoices, d.id); if (!i) return; confirmBox(`Delete ${esc(i.number)}?`, `The invoice to ${esc(i.client)} for ${money(invoiceTotal(i))} will be removed. Any payment already recorded stays in your transactions.`, 'Delete invoice', () => { S.invoices = S.invoices.filter((x) => x.id !== i.id); save(); refresh(); toast(`${i.number} deleted`); }); },
+    'add-budget': (d) => budgetForm(null, d.cat),
+    'edit-budget': (d) => budgetForm(byId(S.budgets, d.id)),
+    'del-budget': (d) => { const b = byId(S.budgets, d.id); if (!b) return; confirmBox('Remove budget?', `The ${esc(b.category)} budget of ${money0(b.limit)} a month will be removed. Transactions are not affected.`, 'Remove', () => { S.budgets = S.budgets.filter((x) => x.id !== b.id); save(); refresh(); toast('Budget removed'); }); },
+    'b-month': (d) => { const v = +d.v; if (v === 0) UI.bMonth = monthKey(TODAY); else { const x = parseD(UI.bMonth + '-01'); x.setMonth(x.getMonth() + v); const k = iso(x).slice(0, 7); if (k <= monthKey(TODAY)) UI.bMonth = k; } refresh(true); },
+    'fc-days': (d) => { UI.fc.days = +d.v; refresh(true); },
+    'fc-reset': () => { Object.assign(UI.fc, { rev: 0, exp: 0, delay: 0 }); refresh(); },
+    'add-rec': () => recForm(),
+    'edit-rec': (d) => recForm(byId(S.recurring, d.id)),
+    'del-rec': (d) => { const r = byId(S.recurring, d.id); if (!r) return; confirmBox('Delete recurring item?', `“${esc(r.name)}” will no longer appear in the forecast.`, 'Delete', () => { S.recurring = S.recurring.filter((x) => x.id !== r.id); save(); refresh(); toast('Recurring item deleted'); }); },
+    'rep-range': (d) => { UI.rep = d.v; refresh(true); },
+    'rep-csv': () => {
+      const [a, b, label] = rangeFor(UI.rep); const t = totals(a, b);
+      const lines = [`Profit and loss,${csvCell(S.settings.business)}`, `Period,${a} to ${b} (${label})`, '', 'Section,Category,Amount'];
+      groupSum(t.list.filter((x) => x.type === 'income'), 'category').forEach((r) => lines.push(`Income,${csvCell(r.k)},${r.v.toFixed(2)}`));
+      lines.push(`Income,Total income,${t.inc.toFixed(2)}`);
+      groupSum(t.list.filter((x) => x.type === 'expense'), 'category').forEach((r) => lines.push(`Expenses,${csvCell(r.k)},${r.v.toFixed(2)}`));
+      lines.push(`Expenses,Total expenses,${t.exp.toFixed(2)}`, `Net,Net profit,${t.net.toFixed(2)}`);
+      download(`ledgerline-pnl-${a}-to-${b}.csv`, lines.join('\n'), 'text/csv'); toast('P&L exported');
+    },
+    'rep-print': () => { const p = $('#pnl'); if (!p) { toast('Nothing to print for this period', 'err'); return; } const [a, b] = rangeFor(UI.rep); $('#printArea').innerHTML = `<div class="print-report"><h1 style="font-family:Newsreader,serif;font-size:28px">${esc(S.settings.business)} · Profit &amp; loss</h1><p style="margin:6px 0 18px;color:#555">${fmtDate(a)} to ${fmtDate(b)}</p>${p.innerHTML}</div>`; window.print(); },
+    'tax-paid': (d) => {
+      const y = +d.key.slice(0, 4); const p = taxPeriods(y).find((x) => x.key === d.key); if (!p) return;
+      openModal({ title: `Record payment · ${p.label}`, submitLabel: 'Save payment', body: `<label class="field"><span class="label">Amount paid</span><input class="input font-mono" type="number" min="0" step="0.01" name="amt" value="${Math.round(p.owed + p.paid)}" required /></label><p class="text-[13px] text-stone-600 mt-3">The estimate for ${p.label} is ${money0(p.est)}. This records the payment here only. Add the bank withdrawal as a transaction if you track it.</p>`, onSubmit(fd) { S.taxPaid[p.key] = round2(+fd.amt); save(); refresh(); toast(`${p.label} payment saved`); } });
+    },
+    'tax-clear': (d) => { delete S.taxPaid[d.key]; save(); refresh(); toast('Payment cleared'); },
+    'add-account': () => accountForm(),
+    'edit-account': (d) => accountForm(byId(S.accounts, d.id)),
+    'del-account': (d) => { const a = byId(S.accounts, d.id); if (!a) return; const n = S.transactions.filter((t) => t.account === a.id).length; if (n) { toast(`${a.name} has ${n} transactions, so it can't be removed`, 'err'); return; } confirmBox('Remove account?', `${esc(a.name)} will be removed.`, 'Remove', () => { S.accounts = S.accounts.filter((x) => x.id !== a.id); save(); refresh(); toast('Account removed'); }); },
+    'del-cat': (d) => { const n = S.transactions.filter((t) => t.category === d.name).length + S.budgets.filter((b) => b.category === d.name).length + S.recurring.filter((r) => r.category === d.name).length; if (n) { toast(`“${d.name}” is in use, so it can't be removed`, 'err'); return; } if (S.categories[d.type].length <= 1) { toast('Keep at least one category', 'err'); return; } S.categories[d.type] = S.categories[d.type].filter((c) => c !== d.name); S.rules = S.rules.filter((r) => r.category !== d.name); save(); refresh(); toast('Category removed'); },
+    'del-rule': (d) => { S.rules = S.rules.filter((r) => r.id !== d.id); save(); refresh(); toast('Rule removed'); },
+    'apply-rules': () => { let n = 0; S.transactions.forEach((t) => { if (/^other (income|expense)$|^uncategorized$/i.test(t.category)) { const s = suggestCategory(t.desc, t.type); if (s && s !== t.category) { t.category = s; n++; } } }); save(); refresh(); toast(n ? `Re-categorized ${n} transaction${n === 1 ? '' : 's'}` : 'No uncategorized transactions matched a rule'); },
+    'export-json': () => { download(`ledgerline-backup-${TODAY}.json`, JSON.stringify(S, null, 2), 'application/json'); toast('Backup downloaded'); },
+    'import-json': () => { const f = $('#jsonFile'); f.value = ''; f.click(); },
+    'reset-sample': () => confirmBox('Reload sample data?', 'Your current data will be replaced by the sample design studio. Export a backup first if you want to keep it.', 'Load sample', () => { S = seed(); save(); refresh(true); toast('Sample data loaded'); }),
+    'clear-all': () => ACTIONS['start-fresh'](),
+  };
+
+  function accountForm(a) {
+    const isNew = !a;
+    openModal({
+      title: isNew ? 'New account' : `Edit ${a.name}`, submitLabel: isNew ? 'Add account' : 'Save',
+      body: `<div class="grid sm:grid-cols-2 gap-4"><label class="field"><span class="label">Account name</span><input class="input" name="name" value="${esc(a ? a.name : '')}" required maxlength="60" placeholder="e.g. Business checking" /></label><label class="field"><span class="label">Opening balance</span><input class="input font-mono" type="number" step="0.01" name="opening" value="${a ? a.opening : 0}" required /></label><p class="sm:col-span-2 text-[13px] text-stone-600">The opening balance is what the account held before the first transaction you track here.</p></div>`,
+      onSubmit(fd) { if (isNew) S.accounts.push({ id: uid(), name: fd.name.trim(), opening: round2(+fd.opening) }); else { a.name = fd.name.trim(); a.opening = round2(+fd.opening); } save(); refresh(); toast(isNew ? 'Account added' : 'Account updated'); },
+    });
+  }
+
+  const FORMS = {
+    profile(f) {
+      const fd = Object.fromEntries(new FormData(f));
+      Object.assign(S.settings, { business: fd.business.trim(), owner: fd.owner.trim(), email: fd.email.trim(), currency: fd.currency, taxRate: +fd.taxRate, lowBalance: +fd.lowBalance });
+      save(); refresh(); toast('Profile saved');
+    },
+    'tax-rate'(f) { S.settings.taxRate = +f.rate.value; save(); refresh(); toast(`Set-aside rate is now ${S.settings.taxRate}%`); },
+    'add-cat'(f) {
+      const type = f.type.value, name = f.name.value.trim(); if (!name) return;
+      if (allCats().some((c) => c.toLowerCase() === name.toLowerCase())) { toast('That category already exists', 'err'); return; }
+      S.categories[type].push(name); save(); refresh(); toast(`Added ${name}`);
+    },
+    'add-rule'(f) { const match = f.match.value.trim(); if (!match) return; S.rules.push({ id: uid(), match, category: f.category.value }); save(); refresh(); toast('Rule added'); },
+  };
+
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-action]'); if (!b) return;
+    const fn = ACTIONS[b.dataset.action]; if (!fn) return;
+    if (b.tagName === 'A' && b.getAttribute('href') && b.getAttribute('href').startsWith('mailto:')) return;
+    e.preventDefault(); fn(b.dataset, b, e);
+  });
+  document.addEventListener('submit', (e) => { const f = e.target; const h = f.dataset && FORMS[f.dataset.form]; if (h) { e.preventDefault(); if (f.reportValidity()) h(f); } });
+  document.addEventListener('input', (e) => {
+    const el = e.target; if (!el.dataset || !el.dataset.filter) return;
+    UI.tx[el.dataset.filter] = el.value; UI.tx.page = 1; renderTxTable();
+  });
+  document.addEventListener('change', (e) => { const el = e.target; if (el.dataset && el.dataset.filter && el.tagName === 'SELECT') { UI.tx[el.dataset.filter] = el.value; UI.tx.page = 1; renderTxTable(); } });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.body.classList.contains('menu-open')) closeMenu(); });
+  $('#csvFile').addEventListener('change', (e) => { const file = e.target.files[0]; if (!file) return; const r = new FileReader(); r.onload = () => importCSV(String(r.result)); r.onerror = () => toast('Could not read that file', 'err'); r.readAsText(file); });
+  $('#jsonFile').addEventListener('change', (e) => {
+    const file = e.target.files[0]; if (!file) return; const r = new FileReader();
+    r.onload = () => { try { const s = JSON.parse(String(r.result)); if (!s || s.version !== 1 || !Array.isArray(s.transactions) || !s.settings || !s.categories) throw new Error('shape'); confirmBox('Restore this backup?', `It holds ${s.transactions.length} transactions and ${(s.invoices || []).length} invoices for ${esc(s.settings.business)}. Your current data will be replaced.`, 'Restore', () => { S = Object.assign(blank(), s); save(); refresh(true); toast('Backup restored'); }); } catch (err) { toast('That is not a Ledgerline backup file', 'err'); } };
+    r.readAsText(file);
+  });
+  function closeMenu() { document.body.classList.remove('menu-open'); $('#scrim').hidden = true; }
+
+  /* ================== LANDING ================== */
+  let landingBuilt = false;
+  function renderLanding() {
+    // ASCII band, built once
+    if (!landingBuilt) {
+      landingBuilt = true;
+      const cols = 150, rows = 14; let seedN = 11;
+      const rnd = () => (seedN = (seedN * 16807) % 2147483647) / 2147483647;
+      const grid = Array.from({ length: 12 }, () => Array.from({ length: 40 }, rnd));
+      const noise = (x, y) => { const gx = x / 3, gy = y / 4, x0 = Math.floor(gx), y0 = Math.floor(gy), fx = gx - x0, fy = gy - y0, sm = (t) => t * t * (3 - 2 * t), g = (a, b) => grid[b % 12][a % 40]; const a = g(x0, y0) + (g(x0 + 1, y0) - g(x0, y0)) * sm(fx), b = g(x0, y0 + 1) + (g(x0 + 1, y0 + 1) - g(x0, y0 + 1)) * sm(fx); return a + (b - a) * sm(fy); };
+      const lines = [];
+      for (let y = 0; y < rows; y++) {
+        let line = '', cls = null, buf = '';
+        const push = (c, ch) => { if (c !== cls) { if (buf) line += `<span class="${cls}">${buf}</span>`; cls = c; buf = ''; } buf += ch; };
+        for (let x = 0; x < cols; x++) {
+          const wave = Math.sin((x / cols) * Math.PI * 2) * 0.12;
+          const p = (noise(x, y) - 0.5) * 1.7 + wave + (rnd() - 0.5) * 0.45;
+          if (p > 0.24) { const r2 = rnd(); push(r2 < 0.012 ? 'm' : 'c', r2 < 0.7 ? '$' : r2 < 0.85 ? '£' : r2 < 0.95 ? '€' : '¥'); }
+          else push('s', rnd() < 0.07 ? ' ' : '/');
+        }
+        if (buf) line += `<span class="${cls}">${buf}</span>`;
+        lines.push(line);
+      }
+      const block = lines.join('\n');
+      $('#ascii').innerHTML = `<div class="marquee"><div>${block}</div><div>${block}</div></div>`;
+      // hero line
+      let v = 300; const pts = [];
+      let s2 = 5; const r3 = () => (s2 = (s2 * 16807) % 2147483647) / 2147483647;
+      for (let i = 0; i <= 40; i++) { v += (r3() - 0.62) * 34; v = Math.max(40, Math.min(360, v)); pts.push([i * 20, v]); }
+      const d = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0]},${p[1].toFixed(1)}`).join('');
+      const last = pts[pts.length - 1];
+      $('#heroLine').innerHTML = `<defs><linearGradient id="hl" x1="0" x2="1"><stop offset="0" stop-color="#85eda5" stop-opacity="0"/><stop offset=".55" stop-color="#85eda5" stop-opacity=".35"/><stop offset="1" stop-color="#85eda5" stop-opacity=".9"/></linearGradient><linearGradient id="hf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#85eda5" stop-opacity=".07"/><stop offset="1" stop-color="#85eda5" stop-opacity="0"/></linearGradient></defs>
+        ${[80, 160, 240, 320].map((y) => `<line x1="0" x2="800" y1="${y}" y2="${y}" stroke="#1c1b1a" stroke-dasharray="2 6" vector-effect="non-scaling-stroke"/>`).join('')}
+        <path d="${d}L800,400L0,400Z" fill="url(#hf)" class="${ANIM ? 'hero-fill' : ''}"/>
+        <path id="hlPath" d="${d}" stroke="url(#hl)" stroke-width="1.6" vector-effect="non-scaling-stroke"/>`;
+      const hp = $('#hlPath'); const len = hp.getTotalLength();
+      if (ANIM) { hp.style.strokeDasharray = len; hp.style.strokeDashoffset = len; hp.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: 2600, easing: 'cubic-bezier(.4,.1,.2,1)', fill: 'forwards', delay: 200 }); }
+      void last;
+      $('#yr').textContent = new Date().getFullYear();
+      // features
+      const feats = [
+        ['dashboard', 'Dashboard', 'Cash, profit, open invoices and alerts the moment you open it.'],
+        ['transactions', 'Transactions', 'Search, filter and edit every entry. Import and export CSV.'],
+        ['invoices', 'Invoices', 'Create, print and track invoices. Draft reminders for late payers.'],
+        ['budgets', 'Budgets', 'Monthly limits per category, with a likely month-end figure that warns you early.'],
+        ['cashflow', 'Cash flow', 'A 30, 60 or 90-day forecast with what-if sliders.'],
+        ['reports', 'Reports', 'Profit and loss by period, expense breakdown and top clients.'],
+        ['taxes', 'Taxes', 'Quarterly estimated-tax schedule and a monthly set-aside figure.'],
+        ['settings', 'Settings', 'Accounts, categories, auto-categorize rules and backups.'],
+      ];
+      $('#featureGrid').innerHTML = feats.map(([r, t, d2], i) => `<a href="#${r}" class="fcard reveal p-7 lg:p-8 min-h-[230px] lg:min-h-[260px] flex flex-col ${i % 4 !== 3 ? 'lg:dash-r' : ''} ${i % 2 === 0 ? 'sm:dash-r lg:border-r-0' : ''} ${i < 6 ? 'dash-b' : 'sm:border-b-0 dash-b'} ${i === 7 ? '!border-b-0' : ''}" style="transition-delay:${(i % 4) * 70}ms">
+        <span class="fnum font-mono text-[12px] text-stone-600">${pad(i + 1)}</span>
+        <span class="serif text-[30px] leading-[32px] mt-auto pt-10">${t}</span>
+        <span class="mt-3 text-[14.5px] leading-[22px] text-stone-600">${d2}</span>
+        <span class="mt-5 font-mono text-[11.5px] tracking-[.06em] text-stone-100 inline-flex items-center gap-2">OPEN ${ICON.arrow}</span></a>`).join('');
+    }
+    // Live stats (refresh each visit)
+    const m = rangeFor('month'), t = totals(m[0], m[1]), open = openInvoices(), rw = runway();
+    const ytd = totals(rangeFor('ytd')[0], TODAY);
+    const onTrack = budgetRows(monthKey(TODAY)).filter((r) => r.state === 'ok').length;
+    const stats = [
+      ['Cash on hand', cashBalance(), 'money0'], ['Net this month', t.net, 'money0'], ['Income YTD', ytd.inc, 'money0'],
+      ['Open invoices', sum(open, invoiceTotal), 'money0'], ['Runway', rw.months == null ? 'Positive' : rw.months.toFixed(1) + ' mo', null], ['Budgets on track', `${onTrack} of ${S.budgets.length}`, null],
+    ];
+    $('#statStrip').innerHTML = stats.map(([l, v, f], i) => `<div class="reveal h-[92px] px-5 lg:px-6 flex flex-col justify-center gap-1.5 ${i % 2 === 0 ? 'dash-r' : ''} lg:dash-r ${i === 5 ? 'lg:border-r-0' : ''} ${i < 4 ? 'dash-b' : ''} lg:border-b-0" style="transition-delay:${i * 60}ms"><span class="label">${l}</span><span class="serif text-[26px] leading-none text-stone-100 whitespace-nowrap" ${f ? `data-count="${v}" data-fmt="${f}"` : ''}>${f ? FMT[f](v) : esc(v)}</span></div>`).join('');
+    const ms = lastNMonths(6), data = ms.map((k) => totals(k + '-01', endOfMonth(k)));
+    const net6 = sum(data, (d) => d.net);
+    $('#lpNet').textContent = `${money0(net6)} net over 6 months`;
+    chart($('#landingChart'), (el) => barChart(el, { labels: ms.map((k) => fmtMonth(k)), series: [{ name: 'Income', color: '#2fa866', values: data.map((d) => d.inc) }, { name: 'Expenses', color: '#8a6ce8', values: data.map((d) => d.exp) }], title: 'Income and expenses, last six months' }));
+  }
+
+  /* ================== ROUTER ================== */
+  const VIEWS = { dashboard: viewDashboard, transactions: viewTransactions, invoices: viewInvoices, budgets: viewBudgets, cashflow: viewCashflow, reports: viewReports, taxes: viewTaxes, settings: viewSettings };
+  const TITLES = { home: 'Business finance tracker', dashboard: 'Dashboard', transactions: 'Transactions', invoices: 'Invoices', budgets: 'Budgets', cashflow: 'Cash flow', reports: 'Reports', taxes: 'Taxes', settings: 'Settings' };
+  let current = null;
+  function routeName() { const h = location.hash.replace(/^#/, ''); return h === 'home' || VIEWS[h] ? h : 'home'; }
+  function render(opts = {}) {
+    const name = routeName(); const same = name === current;
+    ANIM = !reduced && (!same || !!opts.anim);
+    charts = []; hideTip();
+    if (!same) closeModal();
+    if (name === 'home') {
+      $('#app').hidden = true; $('#site').hidden = false;
+      if (!same) $$('#site .reveal').forEach((el) => { el.classList.remove('in'); });
+      renderLanding();
+    } else {
+      $('#site').hidden = true; $('#app').hidden = false;
+      $('#nav').innerHTML = NAV.map(([r, l, ic]) => `<a href="#${r}" class="nav-link ${r === name ? 'active' : ''}" ${r === name ? 'aria-current="page"' : ''}><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round">${ic}</svg>${l}</a>`).join('');
+      $('#crumb').textContent = TITLES[name].toUpperCase();
+      $('#sbBiz').textContent = S.settings.business; $('#sbCash').textContent = money0(cashBalance());
+      const scrollY = window.scrollY;
+      const v = VIEWS[name]();
+      const view = $('#view'); view.classList.toggle('anim', ANIM); view.innerHTML = v.html;
+      if (!ANIM) $$('.reveal', view).forEach((el) => el.classList.add('in'));
+      if (v.mount) v.mount();
+      if (same) window.scrollTo(0, scrollY);
+    }
+    document.title = `${TITLES[name]} · Ledgerline`;
+    if (!same) { window.scrollTo(0, 0); closeMenu(); }
+    current = name;
+    observeReveals();
+    if (!ANIM) countUps(document);
+  }
+  function refresh(anim) { render({ anim: !!anim }); }
+
+  let rT; window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { const p = ANIM; ANIM = false; charts.forEach((f) => f()); ANIM = p; }, 150); });
+  window.addEventListener('hashchange', () => render());
+  window.addEventListener('storage', (e) => { if (e.key === KEY) { const s = load(); if (s) { S = s; refresh(); } } });
+
+  /* ---------------- boot ---------------- */
+  S = load();
+  if (!S) { S = seed(); save(); }
+  save();
+  render();
+})();
+</script>
+</body>
+</html>
