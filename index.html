@@ -137,11 +137,26 @@
     .js .reveal.in { opacity: 1; transform: none; }
 
     /* ASCII currency band */
-    #ascii { font-size: 12px; line-height: 14px; white-space: pre; letter-spacing: 0.1em; }
-    #ascii .c { color: #827e77; } #ascii .s { color: #262523; } #ascii .m { color: #85eda5; }
-    .marquee { display: flex; width: max-content; animation: marquee 90s linear infinite; will-change: transform; }
-    @keyframes marquee { to { transform: translate3d(-50%, 0, 0); } }
-    .ticker { display: flex; width: max-content; animation: marquee 50s linear infinite; will-change: transform; }
+    /* Liquid-metal button: metal rim (WebGL via @paper-design/shaders), dark core, ripple on press */
+    .lm-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; height: 46px; padding: 0 26px; border-radius: 999px; isolation: isolate; cursor: pointer; -webkit-tap-highlight-color: transparent;
+      box-shadow: 0 0 0 1px rgba(0,0,0,.3), 0 36px 14px rgba(0,0,0,.02), 0 20px 12px rgba(0,0,0,.08), 0 9px 9px rgba(0,0,0,.12), 0 2px 5px rgba(0,0,0,.15);
+      transition: transform .5s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease; }
+    .lm-btn:hover { box-shadow: 0 0 0 1px rgba(0,0,0,.4), 0 12px 6px rgba(0,0,0,.05), 0 8px 5px rgba(0,0,0,.1), 0 4px 4px rgba(0,0,0,.15), 0 1px 2px rgba(0,0,0,.2), 0 0 28px rgba(133,237,165,.10); }
+    .lm-btn.pressed { transform: translateY(1px) scale(.98); transition-duration: .15s; }
+    .lm-metal { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; z-index: 0;
+      background: conic-gradient(from 210deg, #4a4845, #e6e1d9, #7c7771, #fdfcf9, #4a4845, #c2bcb2, #4a4845); }
+    .lm-metal canvas { position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important; display: block !important; border-radius: 999px; }
+    .lm-core { position: absolute; inset: 2px; border-radius: inherit; z-index: 1; background: linear-gradient(180deg, #202020 0%, #000 100%); transition: box-shadow .15s ease; }
+    .lm-btn.pressed .lm-core { box-shadow: inset 0 2px 4px rgba(0,0,0,.4), inset 0 1px 2px rgba(0,0,0,.3); }
+    .lm-label { position: relative; z-index: 3; display: inline-flex; align-items: center; gap: 9px; font-family: 'Roboto Mono', monospace; font-size: 12.5px; letter-spacing: .05em; text-transform: uppercase; color: #e6e1d9; text-shadow: 0 1px 2px rgba(0,0,0,.5); transition: color .2s; white-space: nowrap; }
+    .lm-btn:hover .lm-label { color: #fff; }
+    .lm-btn .arr { transition: transform .3s; } .lm-btn:hover .arr { transform: translateX(3px); }
+    .lm-fx { position: absolute; inset: 2px; border-radius: inherit; overflow: hidden; z-index: 2; pointer-events: none; }
+    .lm-ripple { position: absolute; width: 20px; height: 20px; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,.4) 0%, rgba(255,255,255,0) 70%); animation: lm-ripple .6s ease-out forwards; }
+    @keyframes lm-ripple { 0% { transform: translate(-50%,-50%) scale(0); opacity: .6; } 100% { transform: translate(-50%,-50%) scale(4); opacity: 0; } }
+    .hero-veil { background: linear-gradient(90deg, rgba(12,12,11,.94) 0%, rgba(12,12,11,.78) 30%, rgba(12,12,11,.2) 62%, rgba(12,12,11,0) 80%), linear-gradient(0deg, #0c0c0b 0%, rgba(12,12,11,0) 28%), linear-gradient(180deg, #0c0c0b 0%, rgba(12,12,11,0) 22%); }
+    @media (max-width: 1023px) { .hero-veil { background: linear-gradient(180deg, #0c0c0b 0%, rgba(12,12,11,0) 18%), linear-gradient(0deg, rgba(12,12,11,.96) 0%, rgba(12,12,11,.72) 55%, rgba(12,12,11,.35) 100%); } }
+    #heroShader, #tickerBand { display: block; width: 100%; height: 100%; }
 
     /* Charts */
     .chart svg { display: block; overflow: visible; }
@@ -242,7 +257,8 @@
 
     <!-- Hero -->
     <section class="relative lg:h-[600px] overflow-hidden">
-      <svg id="heroLine" class="absolute right-0 top-10 w-[70%] h-[78%] hidden md:block" viewBox="0 0 800 400" preserveAspectRatio="none" fill="none" aria-hidden="true"></svg>
+      <canvas id="heroShader" class="absolute inset-0" aria-hidden="true"></canvas>
+      <div class="hero-veil absolute inset-0 pointer-events-none" aria-hidden="true"></div>
       <div class="max-w-container mx-auto h-full px-4 lg:px-10 pt-20 pb-12 lg:pt-0 lg:pb-10 flex flex-col justify-end relative">
         <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-10">
           <div class="reveal">
@@ -250,8 +266,8 @@
             <h1 class="serif text-[50px] leading-[50px] sm:text-[64px] sm:leading-[64px] lg:text-[76px] lg:leading-[74px] text-stone-100">The ledger your<br />business runs on</h1>
             <p class="mt-5 max-w-[640px] text-[18px] leading-[27px] lg:text-[20px] lg:leading-[29px] text-stone-100">Track income, expenses, invoices, budgets and taxes in one place. <span class="text-stone-600">See where the money went, what's coming in, and what you'll owe, every morning.</span></p>
             <div class="mt-7 flex flex-wrap gap-3">
-              <a href="#dashboard" class="btn btn-primary !h-[42px] !px-5">OPEN DASHBOARD <svg class="arr" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1.5 7h11M8 2.5 12.5 7 8 11.5"/></svg></a>
-              <button type="button" data-action="scroll-to" data-target="features" class="btn btn-ghost !h-[42px] !px-5">SEE THE TOOLS</button>
+              <a href="#dashboard" class="lm-btn" data-lm><span class="lm-metal" aria-hidden="true"></span><span class="lm-core" aria-hidden="true"></span><span class="lm-fx" aria-hidden="true"></span><span class="lm-label">Open dashboard <svg class="arr" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1.5 7h11M8 2.5 12.5 7 8 11.5"/></svg></span></a>
+              <button type="button" data-action="scroll-to" data-target="features" class="btn btn-ghost !h-[46px] !px-5">SEE THE TOOLS</button>
             </div>
           </div>
           <button type="button" data-action="scroll-to" data-target="privacy" class="reveal flex items-center gap-3 font-mono text-[13px] tracking-[0.05em] text-stone-100 lg:mb-2 text-left">
@@ -262,9 +278,9 @@
       </div>
     </section>
 
-    <!-- ASCII currency band (scrolls slowly) -->
+    <!-- Currency ticker band (canvas) -->
     <section class="line-t h-[198px] overflow-hidden" aria-hidden="true">
-      <div id="ascii" class="font-mono pt-[2px] select-none"></div>
+      <canvas id="tickerBand"></canvas>
     </section>
 
     <!-- Live stat strip -->
@@ -365,8 +381,8 @@
       <div class="max-w-container mx-auto px-4 lg:px-10 py-20 lg:py-28 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8 reveal">
         <h2 class="serif serif-h2 text-[38px] leading-[40px] lg:text-[54px] lg:leading-[54px] max-w-[760px]">Start with the sample studio, or start with your own books.</h2>
         <div class="flex flex-wrap gap-3">
-          <a href="#dashboard" class="btn btn-primary !h-[42px] !px-5">EXPLORE THE SAMPLE <svg class="arr" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1.5 7h11M8 2.5 12.5 7 8 11.5"/></svg></a>
-          <button type="button" data-action="start-fresh" class="btn btn-ghost !h-[42px] !px-5">START FRESH</button>
+          <a href="#dashboard" class="lm-btn" data-lm><span class="lm-metal" aria-hidden="true"></span><span class="lm-core" aria-hidden="true"></span><span class="lm-fx" aria-hidden="true"></span><span class="lm-label">Explore the sample <svg class="arr" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1.5 7h11M8 2.5 12.5 7 8 11.5"/></svg></span></a>
+          <button type="button" data-action="start-fresh" class="btn btn-ghost !h-[46px] !px-5">START FRESH</button>
         </div>
       </div>
     </section>
@@ -1720,44 +1736,144 @@
   });
   function closeMenu() { document.body.classList.remove('menu-open'); $('#scrim').hidden = true; }
 
+  /* ================== MOTION: hero shader + currency ticker ================== */
+  // Shared helper: run a frame loop only while the element is on screen and the tab is visible.
+  function visibleLoop(el, frame, fps) {
+    let onScreen = false, raf = 0, last = 0; const minDt = 1000 / fps;
+    const tick = (now) => { raf = 0; if (!onScreen || document.hidden) return; if (now - last >= minDt - 1) { last = now; frame(now); } raf = requestAnimationFrame(tick); };
+    const kick = () => { if (!raf && onScreen && !document.hidden) raf = requestAnimationFrame(tick); };
+    new IntersectionObserver((es) => { onScreen = es[0].isIntersecting; kick(); }, { threshold: 0 }).observe(el);
+    document.addEventListener('visibilitychange', kick);
+    return kick;
+  }
+
+  // Hero: expanding diagonal rings (adapted from a three.js shader to raw WebGL), tinted to the palette.
+  function initHeroShader() {
+    const canvas = $('#heroShader'); if (!canvas) return;
+    const gl = canvas.getContext('webgl', { antialias: false, alpha: false, powerPreference: 'low-power', preserveDrawingBuffer: true });
+    if (!gl) { canvas.remove(); return; }
+    const vs = 'attribute vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }';
+    const fs = `precision highp float;
+      uniform vec2 resolution; uniform float time; uniform vec2 center;
+      void main(void){
+        vec2 uv = (gl_FragCoord.xy - center) * 2.0 / min(resolution.x, resolution.y);
+        float t = time * 0.05; float lw = 0.002;
+        vec3 c = vec3(0.0);
+        // Three staggered generations of rings so the field never goes dark between cycles.
+        for (int k = 0; k < 3; k++) { float ph = float(k) / 3.0;
+          for (int j = 0; j < 3; j++) { for (int i = 0; i < 5; i++) {
+            c[j] += lw * float(i * i) / abs(fract(t + ph - 0.01 * float(j) + float(i) * 0.01) * 5.0 - length(uv) + mod(uv.x + uv.y, 0.2));
+          } }
+        }
+        c = min(c, vec3(1.6));
+        vec3 col = c.r * vec3(0.52, 0.93, 0.65) * 0.62 + c.g * vec3(0.90, 0.88, 0.85) * 0.08 + c.b * vec3(0.70, 0.61, 1.0) * 0.22;
+        float fade = smoothstep(2.6, 0.2, length(uv));
+        col = (1.0 - exp(-col * 2.0)) * 0.5; // soft shoulder: highlights level off instead of glaring
+        gl_FragColor = vec4(vec3(0.047, 0.047, 0.043) + col * fade, 1.0);
+      }`;
+    const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null; };
+    const v = sh(gl.VERTEX_SHADER, vs), f = sh(gl.FRAGMENT_SHADER, fs);
+    if (!v || !f) { canvas.remove(); return; }
+    const prog = gl.createProgram(); gl.attachShader(prog, v); gl.attachShader(prog, f); gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) { canvas.remove(); return; }
+    gl.useProgram(prog);
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    const uRes = gl.getUniformLocation(prog, 'resolution'), uTime = gl.getUniformLocation(prog, 'time'), uCenter = gl.getUniformLocation(prog, 'center');
+    // Render below device resolution: the rings are soft glows, so this costs nothing visually and saves GPU.
+    const scale = Math.min(window.devicePixelRatio || 1, 2) * 0.6;
+    let W = 0, H = 0, cx = 0.7, cy = 0.5, tx = 0.7, ty = 0.5;
+    const size = () => { const r = canvas.getBoundingClientRect(); W = Math.max(1, Math.round(r.width * scale)); H = Math.max(1, Math.round(r.height * scale)); canvas.width = W; canvas.height = H; gl.viewport(0, 0, W, H); };
+    const draw = (sec) => {
+      cx += (tx - cx) * 0.04; cy += (ty - cy) * 0.04;
+      const wide = W / scale >= 1024;
+      gl.uniform2f(uRes, W, H); gl.uniform1f(uTime, sec * 1.8);
+      gl.uniform2f(uCenter, W * (wide ? cx : 0.62), H * (wide ? cy : 0.62));
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    };
+    new ResizeObserver(() => { size(); draw(performance.now() / 1000); }).observe(canvas);
+    size();
+    const hero = canvas.parentElement;
+    hero.addEventListener('pointermove', (e) => { const r = hero.getBoundingClientRect(); tx = 0.7 + ((e.clientX - r.left) / r.width - 0.5) * 0.12; ty = 0.5 - ((e.clientY - r.top) / r.height - 0.5) * 0.12; });
+    hero.addEventListener('pointerleave', () => { tx = 0.7; ty = 0.5; });
+    if (reduced) { draw(6); return; }
+    const t0 = performance.now() - 6000;
+    visibleLoop(canvas, (now) => draw((now - t0) / 1000), 60);
+  }
+
+  // Currency band: a live "price chart" drawn in currency signs that scrolls like a ticker,
+  // with drifting clusters, the odd mint trade flash, and a lens that lights up signs under the pointer.
+  function initTickerBand() {
+    const canvas = $('#tickerBand'); if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const CW = 8.4, CH = 14, GLYPHS = ['/', '$', '£', '€', '¥'];
+    const TONES = ['#232220', '#3d3b38', '#5c5954', '#827e77', '#aaa59c', '#85eda5'];
+    let atlas = null, cols = 0, rows = 0, Wcss = 0, Hcss = 0, mx = -1e4, my = -1e4, lens = 0;
+    const hash = (x, y) => { let h = (Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263)) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
+    const sm = (f) => f * f * (3 - 2 * f);
+    const n1 = (x, k) => { const i = Math.floor(x), f = sm(x - i); return hash(i, k) + (hash(i + 1, k) - hash(i, k)) * f; };
+    const n2 = (x, y) => { const i = Math.floor(x), j = Math.floor(y), fx = sm(x - i), fy = sm(y - j); const a = hash(i, j) + (hash(i + 1, j) - hash(i, j)) * fx, b = hash(i, j + 1) + (hash(i + 1, j + 1) - hash(i, j + 1)) * fx; return a + (b - a) * fy; };
+    const buildAtlas = () => {
+      atlas = document.createElement('canvas'); atlas.width = Math.ceil(GLYPHS.length * CW * dpr); atlas.height = Math.ceil(TONES.length * CH * dpr);
+      const a = atlas.getContext('2d'); a.scale(dpr, dpr); a.font = '12px "Roboto Mono", ui-monospace, monospace'; a.textBaseline = 'middle'; a.textAlign = 'center';
+      TONES.forEach((c, t) => GLYPHS.forEach((g, i) => { a.fillStyle = c; a.fillText(g, i * CW + CW / 2, t * CH + CH / 2 + 0.5); }));
+    };
+    const size = () => { const r = canvas.getBoundingClientRect(); Wcss = r.width; Hcss = r.height; canvas.width = Math.round(Wcss * dpr); canvas.height = Math.round(Hcss * dpr); cols = Math.ceil(Wcss / CW) + 2; rows = Math.floor(Hcss / CH); };
+    // Price line (world-space, so it scrolls rather than morphs): two octaves of 1D noise.
+    const line = (X) => rows * 0.5 + rows * 0.36 * ((n1(X * 0.045, 3) - 0.5) * 1.5 + (n1(X * 0.16, 9) - 0.5) * 0.6);
+    const draw = (sec) => {
+      if (!atlas) return;
+      const scroll = sec * 2.4, base = Math.floor(scroll), frac = scroll - base;
+      lens += ((mx > -1e3 ? 1 : 0) - lens) * 0.12;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = '#0c0c0b'; ctx.fillRect(0, 0, Wcss, Hcss);
+      const sw = CW * dpr, sh = CH * dpr, oy = (Hcss - rows * CH) / 2;
+      const flick = Math.floor(sec * 4);
+      for (let x = 0; x < cols; x++) {
+        const X = base + x, lc = line(X), width = 1.6 + n1(X * 0.07, 21) * 1.6;
+        const px = (x - frac) * CW;
+        for (let y = 0; y < rows; y++) {
+          const py = oy + y * CH;
+          const dl = (y - lc) / width;
+          let d = Math.exp(-dl * dl) * 0.95;
+          if (y > lc) d = Math.max(d, 0.42 * Math.exp(-(y - lc) / 5) * (0.6 + 0.4 * n2(X * 0.2, y * 0.4)));
+          d = Math.max(d, (n2(X * 0.09, y * 0.3 + sec * 0.25) - 0.58) * 1.5);
+          d += (hash(X * 7 + y, flick) - 0.5) * 0.1;
+          let boost = 0;
+          if (lens > 0.01) { const ddx = (px + CW / 2 - mx) / CW, ddy = (py + CH / 2 - my) / CH * 1.6; boost = Math.exp(-(ddx * ddx + ddy * ddy) / 34) * lens; d += boost * 0.75; }
+          let g, t;
+          if (d < 0.34) { if (hash(X, y + 99) < 0.06) continue; g = 0; t = boost > 0.25 ? 1 : 0; }
+          else {
+            const r = hash(X, y); g = r < 0.68 ? 1 : r < 0.84 ? 2 : r < 0.95 ? 3 : 4;
+            t = 1 + Math.min(3, Math.floor((d - 0.34) / 0.17));
+            if (boost > 0.55 || (d > 0.7 && hash(X * 13 + y, flick >> 1) < 0.006)) t = 5;
+          }
+          ctx.drawImage(atlas, g * sw, t * sh, sw, sh, px, py, CW, CH);
+        }
+      }
+    };
+    const band = canvas.parentElement;
+    band.addEventListener('pointermove', (e) => { const r = canvas.getBoundingClientRect(); mx = e.clientX - r.left; my = e.clientY - r.top; });
+    band.addEventListener('pointerleave', () => { mx = -1e4; my = -1e4; });
+    let kick = () => {};
+    new ResizeObserver(() => { size(); draw(performance.now() / 1000); }).observe(canvas);
+    size();
+    const start = () => {
+      buildAtlas(); draw(8);
+      if (!reduced) { const t0 = performance.now() - 8000; kick = visibleLoop(canvas, (now) => draw((now - t0) / 1000), 30); kick(); }
+    };
+    (document.fonts && document.fonts.load ? document.fonts.load('12px "Roboto Mono"').catch(() => {}) : Promise.resolve()).then(start);
+  }
+
   /* ================== LANDING ================== */
   let landingBuilt = false;
   function renderLanding() {
-    // ASCII band, built once
+    // Motion + static landing content, built once
     if (!landingBuilt) {
       landingBuilt = true;
-      const cols = 150, rows = 14; let seedN = 11;
-      const rnd = () => (seedN = (seedN * 16807) % 2147483647) / 2147483647;
-      const grid = Array.from({ length: 12 }, () => Array.from({ length: 40 }, rnd));
-      const noise = (x, y) => { const gx = x / 3, gy = y / 4, x0 = Math.floor(gx), y0 = Math.floor(gy), fx = gx - x0, fy = gy - y0, sm = (t) => t * t * (3 - 2 * t), g = (a, b) => grid[b % 12][a % 40]; const a = g(x0, y0) + (g(x0 + 1, y0) - g(x0, y0)) * sm(fx), b = g(x0, y0 + 1) + (g(x0 + 1, y0 + 1) - g(x0, y0 + 1)) * sm(fx); return a + (b - a) * sm(fy); };
-      const lines = [];
-      for (let y = 0; y < rows; y++) {
-        let line = '', cls = null, buf = '';
-        const push = (c, ch) => { if (c !== cls) { if (buf) line += `<span class="${cls}">${buf}</span>`; cls = c; buf = ''; } buf += ch; };
-        for (let x = 0; x < cols; x++) {
-          const wave = Math.sin((x / cols) * Math.PI * 2) * 0.12;
-          const p = (noise(x, y) - 0.5) * 1.7 + wave + (rnd() - 0.5) * 0.45;
-          if (p > 0.24) { const r2 = rnd(); push(r2 < 0.012 ? 'm' : 'c', r2 < 0.7 ? '$' : r2 < 0.85 ? '£' : r2 < 0.95 ? '€' : '¥'); }
-          else push('s', rnd() < 0.07 ? ' ' : '/');
-        }
-        if (buf) line += `<span class="${cls}">${buf}</span>`;
-        lines.push(line);
-      }
-      const block = lines.join('\n');
-      $('#ascii').innerHTML = `<div class="marquee"><div>${block}</div><div>${block}</div></div>`;
-      // hero line
-      let v = 300; const pts = [];
-      let s2 = 5; const r3 = () => (s2 = (s2 * 16807) % 2147483647) / 2147483647;
-      for (let i = 0; i <= 40; i++) { v += (r3() - 0.62) * 34; v = Math.max(40, Math.min(360, v)); pts.push([i * 20, v]); }
-      const d = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0]},${p[1].toFixed(1)}`).join('');
-      const last = pts[pts.length - 1];
-      $('#heroLine').innerHTML = `<defs><linearGradient id="hl" x1="0" x2="1"><stop offset="0" stop-color="#85eda5" stop-opacity="0"/><stop offset=".55" stop-color="#85eda5" stop-opacity=".35"/><stop offset="1" stop-color="#85eda5" stop-opacity=".9"/></linearGradient><linearGradient id="hf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#85eda5" stop-opacity=".07"/><stop offset="1" stop-color="#85eda5" stop-opacity="0"/></linearGradient></defs>
-        ${[80, 160, 240, 320].map((y) => `<line x1="0" x2="800" y1="${y}" y2="${y}" stroke="#1c1b1a" stroke-dasharray="2 6" vector-effect="non-scaling-stroke"/>`).join('')}
-        <path d="${d}L800,400L0,400Z" fill="url(#hf)" class="${ANIM ? 'hero-fill' : ''}"/>
-        <path id="hlPath" d="${d}" stroke="url(#hl)" stroke-width="1.6" vector-effect="non-scaling-stroke"/>`;
-      const hp = $('#hlPath'); const len = hp.getTotalLength();
-      if (ANIM) { hp.style.strokeDasharray = len; hp.style.strokeDashoffset = len; hp.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: 2600, easing: 'cubic-bezier(.4,.1,.2,1)', fill: 'forwards', delay: 200 }); }
-      void last;
+      initHeroShader();
+      initTickerBand();
       $('#yr').textContent = new Date().getFullYear();
       // features
       const feats = [
@@ -1835,6 +1951,43 @@
   save();
   render();
 })();
+</script>
+<script type="module">
+  // Liquid-metal rims. Pinned version: this library is pre-1.0 and its uniforms change between releases.
+  // If it fails to load, the CSS conic-gradient rim underneath stays as a static fallback.
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const btns = [...document.querySelectorAll('[data-lm]')];
+  // Press feel + ripple, then navigate (short delay so the ripple is seen).
+  btns.forEach((b) => {
+    const down = () => b.classList.add('pressed'), up = () => b.classList.remove('pressed');
+    b.addEventListener('pointerdown', down); b.addEventListener('pointerup', up); b.addEventListener('pointerleave', up);
+    b.addEventListener('click', (e) => {
+      const href = b.getAttribute('href'); if (!href || e.metaKey || e.ctrlKey || e.shiftKey) return;
+      e.preventDefault();
+      const r = b.getBoundingClientRect(), fx = b.querySelector('.lm-fx'), rp = document.createElement('span');
+      rp.className = 'lm-ripple'; rp.style.left = (e.clientX ? e.clientX - r.left - 2 : r.width / 2) + 'px'; rp.style.top = (e.clientY ? e.clientY - r.top - 2 : r.height / 2) + 'px';
+      fx.appendChild(rp); setTimeout(() => rp.remove(), 650);
+      if (b._mount) { b._mount.setSpeed(2.4); setTimeout(() => b._mount && b._mount.setSpeed(b.matches(':hover') ? 1 : 0.6), 300); }
+      setTimeout(() => { location.hash = href; }, reduced ? 0 : 220);
+    });
+  });
+  try {
+    const { liquidMetalFragmentShader, ShaderMount } = await import('https://cdn.jsdelivr.net/npm/@paper-design/shaders@0.0.82/+esm');
+    btns.forEach((b) => {
+      try {
+        const m = new ShaderMount(b.querySelector('.lm-metal'), liquidMetalFragmentShader, {
+          u_colorBack: [0, 0, 0, 0], u_colorTint: [1, 1, 1, 1], u_image: undefined, u_isImage: false,
+          u_repetition: 4, u_softness: 0.5, u_shiftRed: 0.3, u_shiftBlue: 0.3, u_distortion: 0, u_contour: 0, u_angle: 45, u_shape: 0,
+          u_fit: 0, u_scale: 1, u_rotation: 0, u_offsetX: 0.1, u_offsetY: -0.1, u_originX: 0.5, u_originY: 0.5, u_worldWidth: 0, u_worldHeight: 0,
+        }, undefined, reduced ? 0 : 0.6);
+        b._mount = m;
+        if (!reduced) {
+          b.addEventListener('pointerenter', () => m.setSpeed(1));
+          b.addEventListener('pointerleave', () => m.setSpeed(0.6));
+        }
+      } catch (err) { /* keep CSS fallback rim */ }
+    });
+  } catch (err) { /* offline or CDN blocked: CSS fallback rim stays */ }
 </script>
 </body>
 </html>
